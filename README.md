@@ -4,7 +4,7 @@
 
 도락은 장기적으로 전국 음식점을 포괄하는 한국형 음식점 리뷰·랭킹 플랫폼이다. 단순한 맛집 지도나 리뷰 앱이 아니라 소비자용 탐색 서비스, 신뢰도 높은 음식점 데이터·평점 플랫폼, 점주용 운영 도구를 함께 구축한다.
 
-현재는 개인 프로젝트이므로 제품 범위는 깊게 설계하되 실제 데이터는 서울의 제한된 생활권과 장르부터 시작한다. 배포는 월 고정비 0원을 목표로 하는 [비용 우선 운영안](./docs/architecture/COST_FIRST_ARCHITECTURE.md)을 따른다.
+현재는 개인 프로젝트이므로 서울의 영업 중 일반음식점 데이터를 먼저 연결하고, 리뷰 신뢰도와 정보 최신화 기능을 단계적으로 깊게 만든다. 배포는 월 고정비 0원을 목표로 하는 [비용 우선 운영안](./docs/architecture/COST_FIRST_ARCHITECTURE.md)을 따른다.
 
 ## 개발 프리뷰 실행
 
@@ -67,6 +67,14 @@ MVP에는 영수증·예약 기반 방문 인증이 아직 없다. 따라서 사
 4. Vercel 프로젝트의 Root Directory를 `apps/web`으로 지정하고 `.env.example`의 서버 환경 변수를 등록한다.
 5. `BETTER_AUTH_URL`은 실제 `https://` 배포 주소로, `DORAK_CONTACT_EMAIL`은 실제 응답 가능한 주소로 설정한다.
 6. 실데이터를 검수해 넣기 전에는 `DORAK_ALLOW_INDEXING=false`를 유지한다.
+
+Neon Free처럼 저장 공간이 제한된 배포에서는 원본 CSV를 별도로 보관하고, 원격 DB에는 검색에 필요한 정규화 결과만 배치 적재한다.
+
+```bash
+DATABASE_URL=postgresql://... pnpm data:import:seoul \
+  /absolute/path/seoul-general-restaurants.csv \
+  --batch-size=1000 --skip-raw
+```
 
 상세 절차와 production gate는 [DEPLOYMENT_ENVIRONMENTS.md](./docs/operations/DEPLOYMENT_ENVIRONMENTS.md)에 있다. CI는 임시 PostgreSQL에서 마이그레이션·시드·테스트·빌드·HTTP smoke를 매번 새로 실행한다.
 

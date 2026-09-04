@@ -8,15 +8,22 @@ const sourceKey = "seoul.localdata.general_restaurant";
 const sourceDisplayName = "서울시 일반음식점 인허가 정보";
 const cliArguments = process.argv.slice(2);
 const useApi = cliArguments.includes("--api");
+const skipRawDocuments = cliArguments.includes("--skip-raw");
 const csvPath = cliArguments.find((value) => !value.startsWith("--"));
 const limitArgument = cliArguments.find((value) =>
   value.startsWith("--limit="),
+);
+const batchSizeArgument = cliArguments.find((value) =>
+  value.startsWith("--batch-size="),
 );
 const limit = limitArgument
   ? Number(limitArgument.slice("--limit=".length))
   : useApi
     ? 1000
     : Infinity;
+const batchSize = batchSizeArgument
+  ? Number(batchSizeArgument.slice("--batch-size=".length))
+  : 500;
 
 if (!databaseUrl) throw new Error("DATABASE_URL is required.");
 if (!csvPath && !useApi) {
@@ -29,6 +36,9 @@ if (useApi && !process.env.SEOUL_OPEN_DATA_KEY) {
 }
 if (limit !== Infinity && (!Number.isFinite(limit) || limit < 1)) {
   throw new Error("--limit must be a positive number.");
+}
+if (!Number.isInteger(batchSize) || batchSize < 1 || batchSize > 1000) {
+  throw new Error("--batch-size must be an integer between 1 and 1000.");
 }
 
 function parseCsv(input) {
@@ -224,82 +234,126 @@ const database = postgres(databaseUrl, { max: 1, connect_timeout: 10 });
 let imported = 0;
 let skipped = 0;
 
-try {
+function normalizeRecord(record) {
+  const recordId = value(record, ["MGTNO", "관리번호"]);
+  const serviceName = value(record, ["SERVICE", "개방서비스명"]);
+  const name = value(record, ["BPLCNM", "사업장명"]);
+  const status = value(record, ["TRDSTATENM", "영업상태명"]);
+  const address =
+    value(record, ["RDNWHLADDR", "도로명전체주소", "도로명주소"]) ||
+    value(record, ["SITEWHLADDR", "소재지전체주소", "지번주소"]);
+  if (
+    !recordId ||
+    !name ||
+    !address ||
+    (serviceName && !/일반음식점/.test(serviceName)) ||
+    (status && !/영업|정상/.test(status))
+  ) {
+    return null;
+  }
+
+  const cuisineLabel = value(record, ["UPTAENM", "업태구분명", "위생업태명"]);
+  const phone = value(record, ["SITETEL", "전화번호"]);
+  const addressDistrict = districtFrom(address);
+  const sourceUpdatedAt = toTimestamp(
+    value(record, ["UPDATEDT", "데이터갱신일자", "LASTMODTS", "최종수정일자"]),
+  );
+  const normalized = {
+    recordId,
+    publicId: stablePublicId("br", recordId),
+    name,
+    neighborhood: neighborhoodFrom(address, addressDistrict),
+    district: addressDistrict,
+    address,
+    phone: phone || null,
+    websiteUrl: toWebsiteUrl(value(record, ["HOMEPAGE", "홈페이지"])),
+    cuisineKey: cuisineKey(cuisineLabel),
+    shortDescription: `서울시 인허가 데이터에 등록된 ${cuisineLabel || "일반"} 음식점`,
+    x: toNumber(value(record, ["X", "좌표정보(X)", "좌표정보(x)"])),
+    y: toNumber(value(record, ["Y", "좌표정보(Y)", "좌표정보(y)"])),
+    sourceUpdatedAt,
+  };
+
+  if (!skipRawDocuments) {
+    const payload = JSON.stringify(record);
+    normalized.payload = payload;
+    normalized.payloadChecksum = createHash("sha256")
+      .update(payload)
+      .digest("hex");
+  }
+  return normalized;
+}
+
+async function flushBatch(sourceId, batch) {
+  if (batch.length === 0) return;
+
   await database.begin(async (transaction) => {
-    const [source] = await transaction`
-      INSERT INTO ingestion.sources (source_key, display_name, provenance)
-      VALUES (${sourceKey}, ${sourceDisplayName}, 'approved_source')
-      ON CONFLICT (source_key) DO UPDATE
-      SET display_name = EXCLUDED.display_name,
-          provenance = EXCLUDED.provenance,
-          is_enabled = true
-      RETURNING id::text
-    `;
-    if (!source) throw new Error("서울 데이터 출처를 등록하지 못했습니다.");
-
-    for await (const record of records) {
-      if (imported >= limit) break;
-
-      const recordId = value(record, ["MGTNO", "관리번호"]);
-      const serviceName = value(record, ["SERVICE", "개방서비스명"]);
-      const name = value(record, ["BPLCNM", "사업장명"]);
-      const status = value(record, ["TRDSTATENM", "영업상태명"]);
-      const address =
-        value(record, ["RDNWHLADDR", "도로명전체주소", "도로명주소"]) ||
-        value(record, ["SITEWHLADDR", "소재지전체주소", "지번주소"]);
-      if (
-        !recordId ||
-        !name ||
-        !address ||
-        (serviceName && !/일반음식점/.test(serviceName)) ||
-        (status && !/영업|정상/.test(status))
-      ) {
-        skipped += 1;
-        continue;
-      }
-
-      const cuisineLabel = value(record, [
-        "UPTAENM",
-        "업태구분명",
-        "위생업태명",
-      ]);
-      const phone = value(record, ["SITETEL", "전화번호"]);
-      const websiteUrl = toWebsiteUrl(value(record, ["HOMEPAGE", "홈페이지"]));
-      const x = toNumber(value(record, ["X", "좌표정보(X)", "좌표정보(x)"]));
-      const y = toNumber(value(record, ["Y", "좌표정보(Y)", "좌표정보(y)"]));
-      const district = districtFrom(address);
-      const sourceUpdatedAt = toTimestamp(
-        value(record, [
-          "UPDATEDT",
-          "데이터갱신일자",
-          "LASTMODTS",
-          "최종수정일자",
-        ]),
+    if (!skipRawDocuments) {
+      const rawParams = [];
+      const rawValues = batch.map((item, index) => {
+        const base = index * 4;
+        rawParams.push(
+          sourceId,
+          item.recordId,
+          item.payload,
+          item.payloadChecksum,
+        );
+        return `($${base + 1}::uuid, $${base + 2}::text, $${base + 3}::jsonb, $${base + 4}::text, now())`;
+      });
+      await transaction.unsafe(
+        `
+          INSERT INTO ingestion.raw_documents (
+            source_id,
+            source_record_id,
+            payload,
+            payload_sha256,
+            fetched_at
+          ) VALUES ${rawValues.join(",")}
+          ON CONFLICT (source_id, source_record_id, payload_sha256) DO UPDATE
+          SET fetched_at = EXCLUDED.fetched_at
+        `,
+        rawParams,
       );
-      const payload = JSON.stringify(record);
-      const payloadChecksum = createHash("sha256")
-        .update(payload)
-        .digest("hex");
+    }
 
-      await transaction`
-        INSERT INTO ingestion.raw_documents (
-          source_id,
-          source_record_id,
-          payload,
-          payload_sha256,
-          fetched_at
-        ) VALUES (
-          ${source.id}::uuid,
-          ${recordId},
-          ${payload}::jsonb,
-          ${payloadChecksum},
-          now()
-        )
-        ON CONFLICT (source_id, source_record_id, payload_sha256) DO UPDATE
-        SET fetched_at = EXCLUDED.fetched_at
-      `;
-
-      await transaction`
+    const branchParams = [];
+    const branchValues = batch.map((item, index) => {
+      const base = index * 14;
+      branchParams.push(
+        item.publicId,
+        item.name,
+        item.neighborhood,
+        item.district,
+        item.address,
+        item.phone,
+        item.websiteUrl,
+        item.cuisineKey,
+        item.shortDescription,
+        2,
+        item.x,
+        item.y,
+        item.recordId,
+        item.sourceUpdatedAt,
+      );
+      return `(
+        $${base + 1}::text,
+        $${base + 2}::text,
+        $${base + 3}::text,
+        $${base + 4}::text,
+        $${base + 5}::text,
+        $${base + 6}::text,
+        $${base + 7}::text,
+        $${base + 8}::text,
+        $${base + 9}::text,
+        $${base + 10}::smallint,
+        $${base + 11}::double precision,
+        $${base + 12}::double precision,
+        $${base + 13}::text,
+        $${base + 14}::timestamptz
+      )`;
+    });
+    await transaction.unsafe(
+      `
         INSERT INTO catalog.branches (
           public_id,
           name,
@@ -317,29 +371,45 @@ try {
           source_record_id,
           source_updated_at,
           last_verified_at
-        ) VALUES (
-          ${stablePublicId("br", recordId)},
-          ${name},
-          ${neighborhoodFrom(address, district)},
-          ${district},
-          ${address},
-          ${phone || null},
-          ${websiteUrl},
-          ${cuisineKey(cuisineLabel)},
-          ${`서울시 인허가 데이터에 등록된 ${cuisineLabel || "일반"} 음식점`},
-          2,
+        )
+        SELECT
+          incoming.public_id,
+          incoming.name,
+          incoming.neighborhood,
+          incoming.district,
+          incoming.road_address,
+          incoming.phone,
+          incoming.website_url,
+          incoming.cuisine_key,
+          incoming.short_description,
+          incoming.price_band,
           CASE
-            WHEN ${x}::double precision IS NULL OR ${y}::double precision IS NULL THEN NULL
+            WHEN incoming.x IS NULL OR incoming.y IS NULL THEN NULL
             ELSE ST_Transform(
-              ST_SetSRID(ST_MakePoint(${x}::double precision, ${y}::double precision), 5174),
+              ST_SetSRID(ST_MakePoint(incoming.x, incoming.y), 5174),
               4326
             )::geography
           END,
           'approved_source',
-          ${sourceKey},
-          ${recordId},
-          ${sourceUpdatedAt},
-          ${sourceUpdatedAt}
+          '${sourceKey}',
+          incoming.source_record_id,
+          incoming.source_updated_at,
+          incoming.source_updated_at
+        FROM (VALUES ${branchValues.join(",")}) AS incoming(
+          public_id,
+          name,
+          neighborhood,
+          district,
+          road_address,
+          phone,
+          website_url,
+          cuisine_key,
+          short_description,
+          price_band,
+          x,
+          y,
+          source_record_id,
+          source_updated_at
         )
         ON CONFLICT (source_key, source_record_id) DO UPDATE
         SET name = EXCLUDED.name,
@@ -355,10 +425,46 @@ try {
             last_verified_at = EXCLUDED.last_verified_at,
             status = 'active',
             updated_at = now()
-      `;
-      imported += 1;
-    }
+      `,
+      branchParams,
+    );
   });
+
+  imported += batch.length;
+  console.log(`서울 음식점 반영 중: ${imported}건, ${skipped}건 건너뜀`);
+}
+
+try {
+  const [source] = await database`
+    INSERT INTO ingestion.sources (source_key, display_name, provenance)
+    VALUES (${sourceKey}, ${sourceDisplayName}, 'approved_source')
+    ON CONFLICT (source_key) DO UPDATE
+    SET display_name = EXCLUDED.display_name,
+        provenance = EXCLUDED.provenance,
+        is_enabled = true
+    RETURNING id::text
+  `;
+  if (!source) throw new Error("서울 데이터 출처를 등록하지 못했습니다.");
+
+  console.log(
+    `서울 음식점 가져오기 시작: 배치 ${batchSize}건, 원본 JSON ${skipRawDocuments ? "생략" : "보관"}`,
+  );
+  let batch = [];
+  for await (const record of records) {
+    if (imported + batch.length >= limit) break;
+    const normalized = normalizeRecord(record);
+    if (!normalized) {
+      skipped += 1;
+      continue;
+    }
+
+    batch.push(normalized);
+    if (batch.length >= batchSize) {
+      await flushBatch(source.id, batch);
+      batch = [];
+    }
+  }
+  await flushBatch(source.id, batch);
 } finally {
   await database.end();
 }

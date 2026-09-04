@@ -29,6 +29,16 @@ DATABASE_URL=postgres://dorak:dorak_local_only@localhost:5432/dorak \
 
 `--limit`를 생략하면 CSV의 영업 중인 행을 모두 반영한다. 스크립트는 UTF-8과 EUC-KR CSV를 읽고, `관리번호/MGTNO`를 안정적인 외부 키로 사용한다. 주소와 좌표가 없는 행은 건너뛰며, 공개 화면에는 공공 인허가 데이터라는 출처와 기준일을 표시한다. 첫 실행은 `--limit=100`으로 변환·검색·지도 상태를 확인한 뒤 전체 적재한다.
 
+기본값은 500건씩 커밋하며 `--batch-size=1..1000`으로 조정할 수 있다. 배치마다 독립적으로 upsert하므로 중단 후 같은 명령을 재실행해도 지점 ID와 리뷰 연결이 유지된다. 로컬 원장 DB는 `ingestion.raw_documents`에 원본 행을 보관한다.
+
+Neon Free처럼 저장 공간이 제한된 클라우드에서는 검수한 원본 CSV를 별도 보관한 뒤 `--skip-raw`로 canonical branch만 적재한다. 이 모드는 출처 키·원천 레코드 ID·원천 갱신일은 유지하지만, 행별 JSON 사본을 DB에 중복 저장하지 않는다.
+
+```bash
+DATABASE_URL=postgresql://... pnpm data:import:seoul \
+  /absolute/path/seoul-general-restaurants.csv \
+  --batch-size=1000 --skip-raw
+```
+
 서울열린데이터광장 인증키가 있다면 같은 서비스의 JSON Open API를 직접 가져올 수도 있다. API는 한 번에 최대 1,000건씩 요청하므로 처음에는 제한을 둔다.
 
 ```bash
@@ -1536,7 +1546,18 @@ CSV를 한 번 정리해 DB에 넣는 방식은 수직 슬라이스 완료로 �
 
 ## 40. 현재 서울 데이터 적재 현황
 
-MVP의 기본 식당 마스터는 서울시 일반음식점 인허가 CSV를 사용한다. 원본 537,067건에서 영업 중인 일반음식점 120,285건만 canonical branch로 반영하고, 원본 레코드는 `ingestion.raw_documents`에 보관한다.
+MVP의 기본 식당 마스터는 서울시 일반음식점 인허가 CSV를 사용한다. 원본 537,067건에서 영업 중인 일반음식점 120,285건만 canonical branch로 반영한다. 로컬 원장 DB는 원본 레코드를 `ingestion.raw_documents`에 보관하고, 비용 우선 클라우드 DB는 `--skip-raw`로 원본 CSV와 정규화 결과를 분리 보관한다.
+
+2026-09-04 Preview Neon 적재 검증 결과는 다음과 같다.
+
+- canonical branch: 120,285곳
+- 지도 좌표: 120,285곳
+- 전화번호: 41,880곳
+- 메뉴: 12,484곳
+- 영업시간: 16,026곳
+- 휴무일: 6,980곳
+- 전체 DB 사용량: 약 225MB
+- migration·리뷰·PostGIS·UUIDv7·제약조건 smoke 통과
 
 메뉴·운영 정보는 서울관광재단의 정적 파일데이터를 식당명과 구 단위로 보수적으로 매칭한다.
 

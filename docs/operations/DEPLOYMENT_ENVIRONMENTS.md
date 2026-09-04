@@ -1,18 +1,17 @@
 # 도락 비용 우선 배포·환경 운영
 
 > 상태: Accepted  
-> 버전: 0.3.0  
-> 기준일: 2026-09-03  
+> 버전: 0.4.0
+> 기준일: 2026-09-04
 > 목표 배포: Vercel Hobby + Neon Free  
-> 현재 확인: 로컬 PostgreSQL + Next.js production build/HTTP smoke  
+> 현재 확인: Vercel Preview + Neon PostgreSQL, Next.js build·DB smoke
 > 관련 결정: [ADR-017](../adr/0017-cost-first-personal-project.md)
 
 ## 1. 목적
 
 이 문서는 개인 프로젝트 단계의 도락을 월 고정비 0원으로 배포하고, 데이터를 잃거나 무료 한도를 갑자기 넘지 않도록 운영하는 방법을 정의한다.
 
-클라우드 계정 연결은 아직 완료하지 않았다. 아래 production 구성은 실제 연결
-전에 지켜야 할 기준이며, 로컬에서 먼저 같은 migration·smoke 흐름을 검증한다.
+Vercel의 `dorak` 프로젝트와 GitHub 저장소 연결, Preview 배포, Neon migration과 서울 음식점 원장 적재까지 완료했다. Production 공개 전에는 아래 production gate와 OAuth·도메인 설정을 마쳐야 한다.
 
 AWS 계정, ECS, RDS, OpenSearch, Redis, 다중 AZ, Terraform은 이 단계의 필수 인프라가 아니다. 규모 확장 시 과거 ADR과 요구사항을 참고하되 공급자는 다시 비교한다.
 
@@ -124,11 +123,14 @@ Vercel의 자동 배포만으로 DB migration을 암묵 실행하지 않는다.
 
 - Root Directory: `apps/web`
 - Framework Preset: Next.js
+- Function Region: `sin1` (Neon `ap-southeast-1`과 동일 리전)
 - Build Command: 저장소의 `apps/web/vercel.json` 사용
-- Install Command: 자동 감지
+- Install Command: `cd ../.. && corepack enable && pnpm install --frozen-lockfile`
 - production·preview 환경 변수는 서로 분리
 
 모노레포 루트의 workspace package를 함께 빌드해야 하므로 `vercel.json`의 build command는 루트로 이동한 뒤 `@dorak/web`만 필터링한다. schema migration은 배포 build command에 넣지 않고 production 배포 전에 별도로 실행한다.
+
+로컬 CLI 배포는 저장소 루트에서 실행하고 `.vercelignore`로 `.turbo`, `node_modules`, 원본 CSV와 빌드 산출물을 제외한다. `apps/web` 폴더만 업로드하면 workspace package가 누락되므로 사용하지 않는다.
 
 ## 6. Neon 준비
 
@@ -140,7 +142,7 @@ Vercel의 자동 배포만으로 DB migration을 암묵 실행하지 않는다.
 6. 격리된 preview DB에서 synthetic seed와 smoke test를 실행한다.
 7. production에는 검수한 실제 초기 데이터만 적재하며 synthetic seed를 실행하지 않는다.
 
-서울 음식점 초기 데이터는 `pnpm data:import:seoul`로 CSV를 수동 검수한 뒤 적재한다. 원본 파일은 저장소에 커밋하지 않고, 첫 실행은 `--limit=100`으로 변환·좌표를 확인한다. `SEOUL_OPEN_DATA_KEY`를 발급받았다면 CSV 대신 `--api`를 사용할 수 있다. 상세 절차와 출처 정책은 [DATA_INGESTION.md](../architecture/DATA_INGESTION.md)를 따른다.
+서울 음식점 초기 데이터는 `pnpm data:import:seoul`로 CSV를 수동 검수한 뒤 적재한다. 원본 파일은 저장소에 커밋하지 않고, 첫 실행은 `--limit=100`으로 변환·좌표를 확인한다. 공간이 제한된 원격 DB는 `--batch-size=1000 --skip-raw`로 정규화 결과만 적재한다. `SEOUL_OPEN_DATA_KEY`를 발급받았다면 CSV 대신 `--api`를 사용할 수 있다. 상세 절차와 출처 정책은 [DATA_INGESTION.md](../architecture/DATA_INGESTION.md)를 따른다.
 
 ### 연결 예산
 
