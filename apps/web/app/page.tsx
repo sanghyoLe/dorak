@@ -9,7 +9,8 @@ export const dynamic = "force-dynamic";
 
 export default async function HomePage() {
   const catalog = getCatalog();
-  const approvedOnly = catalog.mode === "postgres";
+  const approvedOnly =
+    catalog.mode === "postgres" && process.env.DORAK_DEMO_AUTH !== "true";
   const [initialResult, locations] = await Promise.all([
     catalog.searchBranches("", undefined, {
       limit: 60,

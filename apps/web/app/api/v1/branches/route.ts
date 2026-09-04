@@ -43,7 +43,8 @@ export async function GET(request: Request) {
       await catalog.searchBranches(query, cuisine ?? undefined, {
         limit: requestedLimit,
         offset: requestedOffset,
-        approvedOnly: catalog.mode === "postgres",
+        approvedOnly:
+          catalog.mode === "postgres" && process.env.DORAK_DEMO_AUTH !== "true",
       }),
     );
   } catch (error) {
