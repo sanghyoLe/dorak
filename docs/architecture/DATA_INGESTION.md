@@ -46,6 +46,28 @@ SEOUL_OPEN_DATA_KEY=발급받은키 DATABASE_URL=postgres://... \
   pnpm data:import:seoul --api --limit=1000
 ```
 
+### 데이터 검증
+
+적재 후에는 DB 원장 품질과 공개 API의 실제 응답을 각각 확인한다. DB 검증은 PostGIS·pg_trgm 확장, 서울 출처 등록, 활성 지점 필수 필드·좌표·출처 무결성, 중복 원천 키, 검색 텍스트, 운영 후보 큐의 관계 무결성을 검사한다.
+
+```bash
+DATABASE_URL=postgresql://... pnpm data:verify:seoul -- --sample-size=100
+```
+
+배포 환경에서는 공개 API가 PostgreSQL을 사용하고 있는지 확인한 뒤, 첫 100개 지점의 목록·상세·이름+동네 검색 응답을 대조한다. Vercel Deployment Protection을 사용하는 경우 보호 우회값은 셸 환경변수로만 주입한다. 운영 큐까지 확인할 때만 운영자 자격 증명을 추가한다.
+
+```bash
+DORAK_VERIFY_BASE_URL=https://배포도메인 \
+  DORAK_VERIFY_EXPECTED_MODE=postgres \
+  DORAK_VERIFY_PROTECTION_BYPASS=... \
+  DORAK_VERIFY_OPS_REQUIRED=true \
+  DORAK_VERIFY_OPS_USERNAME=... \
+  DORAK_VERIFY_OPS_PASSWORD=... \
+  pnpm data:verify:http -- --sample-size=100
+```
+
+검증기는 읽기 요청만 수행하며, 실패 시 종료 코드 1을 반환한다. `--json`을 붙이면 CI나 배포 기록에 저장할 수 있는 집계 JSON을 출력한다.
+
 ### 지도 연결
 
 상세 페이지의 지도는 카카오 지도 JavaScript SDK를 사용한다. `NEXT_PUBLIC_KAKAO_MAP_APP_KEY`는 공개 가능한 JavaScript 키이며, 카카오 개발자 콘솔에 로컬·배포 도메인을 등록해야 한다. 키나 좌표가 없을 때도 주소와 카카오맵 검색 링크를 보여주므로 지도가 빈 화면이 되지 않는다. 지도 사업자의 장소 목록을 도락 원장으로 저장하지 않고, 지도는 위치 표현과 이동 링크에만 사용한다.

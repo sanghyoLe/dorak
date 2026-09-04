@@ -13,6 +13,8 @@
     "db:seed": "pnpm --filter @dorak/server-catalog seed",
     "db:smoke": "pnpm --filter @dorak/db smoke",
     "data:import:seoul": "node scripts/import-seoul-restaurants.mjs",
+    "data:verify:seoul": "node scripts/verify-seoul-data.mjs",
+    "data:verify:http": "node scripts/verify-seoul-http.mjs",
     "data:enrich:seoul": "node scripts/enrich-seoul-restaurants.mjs",
     "dev": "turbo run dev --parallel",
     "format:check": "prettier --check .",

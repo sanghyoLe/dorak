@@ -37,6 +37,8 @@ pnpm build
 pnpm visual:test
 ```
 
+실제 서울 공공데이터를 적재한 DB는 [데이터 검증 절차](./docs/architecture/DATA_INGESTION.md)의 `data:verify:seoul`과 `data:verify:http` 명령으로 원장 품질과 공개 API의 목록·상세·검색 흐름을 함께 확인한다.
+
 ## 현재 실행 가능한 MVP
 
 현재 코드는 다음 핵심 흐름을 실제 PostgreSQL과 연결해 제공한다.
