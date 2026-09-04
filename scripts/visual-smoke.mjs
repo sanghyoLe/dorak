@@ -211,7 +211,9 @@ try {
   await web.setViewport({ width: 375, height: 900, deviceScaleFactor: 1 });
   await web.goto("http://localhost:3000", { waitUntil: "networkidle0" });
   await web.type("#branch-search", "들기름");
-  await new Promise((resolve) => setTimeout(resolve, 350));
+  await web.click(".home-search .search-button");
+  await web.waitForFunction(() => window.location.pathname === "/r");
+  await web.waitForSelector(".result-heading");
   const resultSummary = await web.$eval(".result-heading", (element) =>
     element.textContent?.replace(/\s+/g, " ").trim(),
   );

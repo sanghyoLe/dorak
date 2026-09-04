@@ -68,7 +68,7 @@ export default async function BranchPage({ params }: BranchPageProps) {
     <>
       <SiteHeader />
 
-      <main className="page-shell branch-page">
+      <main id="main-content" className="page-shell branch-page">
         <nav className="breadcrumb" aria-label="현재 위치">
           <Link href="/">홈</Link>
           <span aria-hidden="true">›</span>
@@ -89,15 +89,6 @@ export default async function BranchPage({ params }: BranchPageProps) {
         </header>
 
         <section className="branch-overview" aria-label={`${branch.name} 요약`}>
-          <div
-            className="branch-photo"
-            role="img"
-            aria-label={`${branch.name} 사진 정보 없음`}
-          >
-            <strong>{branch.cuisineLabel}</strong>
-            <span>사진 정보 없음</span>
-          </div>
-
           <div className="branch-overview__copy">
             <p>{branch.shortDescription}</p>
             <p className="branch-overview__address">
@@ -125,7 +116,6 @@ export default async function BranchPage({ params }: BranchPageProps) {
 
         <section className="branch-location" aria-labelledby="location-title">
           <header>
-            <p>주소와 지도</p>
             <h2 id="location-title">찾아가기</h2>
           </header>
           <KakaoMap
@@ -177,7 +167,6 @@ export default async function BranchPage({ params }: BranchPageProps) {
             >
               <header className="review-section__header">
                 <div>
-                  <p>방문자의 기록</p>
                   <h2 id="reviews-title">리뷰 {reviews.length}건</h2>
                 </div>
                 <p>평점은 공개 리뷰의 단순 평균입니다.</p>
@@ -258,7 +247,6 @@ export default async function BranchPage({ params }: BranchPageProps) {
               aria-labelledby="write-review-title"
             >
               <header>
-                <p>한 번의 방문을 구체적으로</p>
                 <h2 id="write-review-title">리뷰 쓰기</h2>
               </header>
               <ReviewForm
@@ -283,7 +271,6 @@ export default async function BranchPage({ params }: BranchPageProps) {
               aria-labelledby="information-title"
             >
               <header>
-                <p>식당 정보</p>
                 <h2 id="information-title">기본 정보</h2>
               </header>
               <dl className="information-table">
@@ -363,7 +350,6 @@ export default async function BranchPage({ params }: BranchPageProps) {
                 aria-labelledby="menu-title"
               >
                 <header>
-                  <p>이 식당의 음식</p>
                   <h2 id="menu-title">대표 메뉴</h2>
                   {branch.externalInfoUpdatedAt ? (
                     <p className="section-note">
@@ -389,8 +375,7 @@ export default async function BranchPage({ params }: BranchPageProps) {
           </div>
 
           <aside className="branch-data-note" aria-labelledby="data-note-title">
-            <p>리뷰 신뢰 기준</p>
-            <h2 id="data-note-title">표시를 구분해 읽어주세요.</h2>
+            <h2 id="data-note-title">리뷰 기준</h2>
             <p>
               ‘계정 확인’은 작성자가 로그인한 계정임을 뜻합니다. ‘방문일
               자기입력’은 영수증이나 예약 내역을 확인했다는 의미가 아닙니다.

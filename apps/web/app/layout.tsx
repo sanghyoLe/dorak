@@ -1,7 +1,20 @@
 import type { Metadata } from "next";
+import { Noto_Sans_KR, Noto_Serif_KR } from "next/font/google";
 import type { ReactNode } from "react";
 
 import "./globals.css";
+
+const bodyFont = Noto_Sans_KR({
+  display: "swap",
+  variable: "--font-body-face",
+  weight: "variable",
+});
+
+const displayFont = Noto_Serif_KR({
+  display: "swap",
+  variable: "--font-display-face",
+  weight: "variable",
+});
 
 const appOrigin =
   process.env.BETTER_AUTH_URL ??
@@ -34,7 +47,12 @@ export default function RootLayout({
 }: Readonly<{ children: ReactNode }>) {
   return (
     <html lang="ko">
-      <body>{children}</body>
+      <body className={`${bodyFont.variable} ${displayFont.variable}`}>
+        <a className="skip-link" href="#main-content">
+          본문으로 건너뛰기
+        </a>
+        {children}
+      </body>
     </html>
   );
 }

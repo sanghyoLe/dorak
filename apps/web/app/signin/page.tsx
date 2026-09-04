@@ -28,7 +28,7 @@ export default async function SignInPage({ searchParams }: SignInPageProps) {
   return (
     <>
       <SiteHeader />
-      <main className="auth-page">
+      <main id="main-content" className="auth-page">
         <section className="auth-sheet" aria-labelledby="signin-title">
           <p className="auth-sheet__eyebrow">도락 계정</p>
           <h1 id="signin-title">리뷰를 쓰기 전에 계정을 확인합니다.</h1>

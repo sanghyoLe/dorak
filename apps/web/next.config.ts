@@ -1,5 +1,7 @@
 import type { NextConfig } from "next";
 
+const isDevelopment = process.env.NODE_ENV === "development";
+
 const contentSecurityPolicy = [
   "default-src 'self'",
   "base-uri 'self'",
@@ -9,7 +11,15 @@ const contentSecurityPolicy = [
   "frame-ancestors 'none'",
   "img-src 'self' data: https: http://*.daumcdn.net",
   "object-src 'none'",
-  "script-src 'self' 'unsafe-inline' https://dapi.kakao.com https://t1.daumcdn.net http://t1.daumcdn.net",
+  [
+    "script-src 'self' 'unsafe-inline'",
+    // React's development error overlay reconstructs call stacks with eval().
+    // Keep this development-only so production deployments remain stricter.
+    ...(isDevelopment ? ["'unsafe-eval'"] : []),
+    "https://dapi.kakao.com",
+    "https://t1.daumcdn.net",
+    "http://t1.daumcdn.net",
+  ].join(" "),
   "style-src 'self' 'unsafe-inline'",
 ].join("; ");
 

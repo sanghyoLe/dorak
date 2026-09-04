@@ -11,6 +11,19 @@ export type CuisineKey = (typeof CUISINE_KEYS)[number];
 
 export type DataProvenance = "synthetic" | "approved_source";
 export type CatalogMode = "memory" | "postgres";
+export type BranchSort = "default" | "rating" | "reviews";
+
+export interface BranchSearchOptions {
+  limit?: number;
+  offset?: number;
+  page?: number;
+  approvedOnly?: boolean;
+  district?: string;
+  neighborhood?: string;
+  priceBands?: number[];
+  minRating?: number;
+  sort?: BranchSort;
+}
 
 export interface BranchSummary {
   id: string;
@@ -45,6 +58,9 @@ export interface BranchSearchResponse {
     query: string;
     total: number;
     dataMode: CatalogMode;
+    page?: number;
+    pageSize?: number;
+    sort?: BranchSort;
   };
 }
 

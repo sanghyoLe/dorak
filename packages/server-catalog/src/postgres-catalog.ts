@@ -1,6 +1,7 @@
 import { createDatabase } from "@dorak/db";
 import type {
   BranchLocationGroup,
+  BranchSearchOptions,
   BranchSearchResponse,
   BranchSummary,
   CandidateStatus,
@@ -211,15 +212,13 @@ export class PostgresCatalog {
   async searchBranches(
     query = "",
     cuisine?: string,
-    options: Readonly<{
-      limit?: number;
-      offset?: number;
-      approvedOnly?: boolean;
-    }> = {},
+    options: Readonly<BranchSearchOptions> = {},
   ): Promise<BranchSearchResponse> {
     const needle = query.normalize("NFKC").trim();
     const limit = Math.min(Math.max(Math.trunc(options.limit ?? 100), 1), 200);
     const offset = Math.max(Math.trunc(options.offset ?? 0), 0);
+    const sort = options.sort ?? "default";
+    const priceBands = options.priceBands?.length ? options.priceBands : null;
     if (!needle) {
       const rows = await this.#database.raw<BranchRow[]>`
         WITH total AS MATERIALIZED (
@@ -227,6 +226,10 @@ export class PostgresCatalog {
           FROM catalog.branches AS counted_branch
           WHERE counted_branch.status = 'active'
             AND (${cuisine ?? null}::text IS NULL OR counted_branch.cuisine_key = ${cuisine ?? null})
+            AND (${options.district ?? null}::text IS NULL OR counted_branch.district = ${options.district ?? null})
+            AND (${options.neighborhood ?? null}::text IS NULL OR counted_branch.neighborhood = ${options.neighborhood ?? null})
+            AND (${priceBands}::int[] IS NULL OR counted_branch.price_band = ANY(${priceBands}::int[]))
+            AND (${options.minRating ?? null}::numeric IS NULL OR counted_branch.rating >= ${options.minRating ?? null})
             AND (${options.approvedOnly ?? false} = false OR counted_branch.provenance = 'approved_source')
         )
         SELECT
@@ -260,8 +263,17 @@ export class PostgresCatalog {
         CROSS JOIN total
         WHERE branch.status = 'active'
           AND (${cuisine ?? null}::text IS NULL OR branch.cuisine_key = ${cuisine ?? null})
+          AND (${options.district ?? null}::text IS NULL OR branch.district = ${options.district ?? null})
+          AND (${options.neighborhood ?? null}::text IS NULL OR branch.neighborhood = ${options.neighborhood ?? null})
+          AND (${priceBands}::int[] IS NULL OR branch.price_band = ANY(${priceBands}::int[]))
+          AND (${options.minRating ?? null}::numeric IS NULL OR branch.rating >= ${options.minRating ?? null})
           AND (${options.approvedOnly ?? false} = false OR branch.provenance = 'approved_source')
-        ORDER BY branch.created_at, branch.public_id
+        ORDER BY
+          CASE WHEN ${sort} = 'rating' THEN branch.rating END DESC NULLS LAST,
+          CASE WHEN ${sort} = 'reviews' OR ${sort} = 'default' THEN branch.review_count END DESC,
+          CASE WHEN ${sort} = 'rating' OR ${sort} = 'reviews' OR ${sort} = 'default' THEN branch.rating END DESC NULLS LAST,
+          branch.created_at,
+          branch.public_id
         LIMIT ${limit}
         OFFSET ${offset}
       `;
@@ -272,6 +284,9 @@ export class PostgresCatalog {
           query,
           total: rows[0]?.totalCount ?? 0,
           dataMode: "postgres",
+          pageSize: limit,
+          sort,
+          ...(options.page === undefined ? {} : { page: options.page }),
         },
       };
     }
@@ -288,6 +303,10 @@ export class PostgresCatalog {
         FROM catalog.branches AS candidate
         WHERE candidate.status = 'active'
           AND (${cuisine ?? null}::text IS NULL OR candidate.cuisine_key = ${cuisine ?? null})
+          AND (${options.district ?? null}::text IS NULL OR candidate.district = ${options.district ?? null})
+          AND (${options.neighborhood ?? null}::text IS NULL OR candidate.neighborhood = ${options.neighborhood ?? null})
+          AND (${priceBands}::int[] IS NULL OR candidate.price_band = ANY(${priceBands}::int[]))
+          AND (${options.minRating ?? null}::numeric IS NULL OR candidate.rating >= ${options.minRating ?? null})
           AND (${options.approvedOnly ?? false} = false OR candidate.provenance = 'approved_source')
           AND candidate.search_text ILIKE ${pattern} ESCAPE '\\'
 
@@ -297,6 +316,10 @@ export class PostgresCatalog {
         FROM catalog.branches AS candidate
         WHERE candidate.status = 'active'
           AND (${cuisine ?? null}::text IS NULL OR candidate.cuisine_key = ${cuisine ?? null})
+          AND (${options.district ?? null}::text IS NULL OR candidate.district = ${options.district ?? null})
+          AND (${options.neighborhood ?? null}::text IS NULL OR candidate.neighborhood = ${options.neighborhood ?? null})
+          AND (${priceBands}::int[] IS NULL OR candidate.price_band = ANY(${priceBands}::int[]))
+          AND (${options.minRating ?? null}::numeric IS NULL OR candidate.rating >= ${options.minRating ?? null})
           AND (${options.approvedOnly ?? false} = false OR candidate.provenance = 'approved_source')
           AND candidate.name % ${needle}
 
@@ -306,6 +329,10 @@ export class PostgresCatalog {
         FROM catalog.branches AS candidate
         WHERE candidate.status = 'active'
           AND (${cuisine ?? null}::text IS NULL OR candidate.cuisine_key = ${cuisine ?? null})
+          AND (${options.district ?? null}::text IS NULL OR candidate.district = ${options.district ?? null})
+          AND (${options.neighborhood ?? null}::text IS NULL OR candidate.neighborhood = ${options.neighborhood ?? null})
+          AND (${priceBands}::int[] IS NULL OR candidate.price_band = ANY(${priceBands}::int[]))
+          AND (${options.minRating ?? null}::numeric IS NULL OR candidate.rating >= ${options.minRating ?? null})
           AND (${options.approvedOnly ?? false} = false OR candidate.provenance = 'approved_source')
           AND to_tsvector('simple'::regconfig, candidate.search_text)
             @@ plainto_tsquery('simple'::regconfig, ${needle})
@@ -341,18 +368,22 @@ export class PostgresCatalog {
         ON source.source_key = branch.source_key
       WHERE branch.status = 'active'
       ORDER BY
-        CASE
-          WHEN ${needle} = '' THEN 0
-          WHEN lower(branch.name) = lower(${needle}) THEN 0
-          WHEN branch.name ILIKE ${prefixPattern} ESCAPE '\\' THEN 1
-          WHEN branch.name ILIKE ${pattern} ESCAPE '\\' THEN 2
-          ELSE 3
+        CASE WHEN ${sort} = 'rating' THEN branch.rating END DESC NULLS LAST,
+        CASE WHEN ${sort} = 'reviews' THEN branch.review_count END DESC,
+        CASE WHEN ${sort} = 'default' THEN
+          CASE
+            WHEN lower(branch.name) = lower(${needle}) THEN 0
+            WHEN branch.name ILIKE ${prefixPattern} ESCAPE '\\' THEN 1
+            WHEN branch.name ILIKE ${pattern} ESCAPE '\\' THEN 2
+            ELSE 3
+          END
         END,
-        ts_rank(
+        CASE WHEN ${sort} = 'default' THEN ts_rank(
           to_tsvector('simple'::regconfig, branch.search_text),
           plainto_tsquery('simple'::regconfig, ${needle})
-        ) DESC,
-        similarity(branch.name, ${needle}) DESC,
+        ) END DESC,
+        CASE WHEN ${sort} = 'default' THEN similarity(branch.name, ${needle}) END DESC,
+        CASE WHEN ${sort} = 'reviews' OR ${sort} = 'rating' THEN branch.review_count END DESC,
         branch.created_at,
         branch.public_id
       LIMIT ${limit}
@@ -365,6 +396,9 @@ export class PostgresCatalog {
         query,
         total: rows[0]?.totalCount ?? 0,
         dataMode: "postgres",
+        pageSize: limit,
+        sort,
+        ...(options.page === undefined ? {} : { page: options.page }),
       },
     };
   }

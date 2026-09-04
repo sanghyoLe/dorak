@@ -12,7 +12,7 @@ export default function ReviewPolicyPage() {
   return (
     <>
       <SiteHeader />
-      <main className="policy-page">
+      <main id="main-content" className="policy-page">
         <header>
           <p>도락 운영 원칙 01</p>
           <h1>확인한 것과 주장한 것을 구분합니다.</h1>

@@ -51,7 +51,7 @@ export default async function OpsPage() {
   const dataModeLabel = dataMode === "postgres" ? "PostgreSQL" : "인메모리";
 
   return (
-    <main className="ops-shell">
+    <main id="main-content" className="ops-shell">
       <header className="ops-header">
         <div>
           <p>도락 / 운영실</p>

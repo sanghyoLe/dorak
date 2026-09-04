@@ -14,7 +14,7 @@ export default function PrivacyPage() {
   return (
     <>
       <SiteHeader />
-      <main className="policy-page">
+      <main id="main-content" className="policy-page">
         <header>
           <p>도락 운영 원칙 02</p>
           <h1>필요한 정보만, 쓰임이 보이게 다룹니다.</h1>

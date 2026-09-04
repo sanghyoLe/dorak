@@ -1,6 +1,4 @@
-/* Hallmark · macrostructure: Ecosystem Index · tone: restaurant discovery portal · anchor hue: clay-orange · theme: studied-DNA (source: https://tabelog.com/kr/) · nav: N6 · footer: Ft1 · studied: yes · contrast: pass (40–41) · slop: pass (42–45) · honest: pass (46) · chrome: pass (47) · tokens: pass (48) · responsive: pass (49) · mobile: pass (34, 49, 50–57) · icons: pass (30)
- * Hallmark · pre-emit critique: P5 H5 E5 S5 R5 V5
- */
+/* Hallmark · macrostructure: Ecosystem Index · tone: restaurant directory · anchor hue: clay-orange · theme: studied-DNA (source: https://tabelog.com/kr/) · studied: yes */
 :root {
   --color-paper: oklch(0.965 0.014 82);
   --color-surface: oklch(0.992 0.008 85);
@@ -24,10 +22,11 @@
   --color-accent-ink: var(--color-surface);
 
   --font-display:
-    "Pretendard Variable", Pretendard, "Apple SD Gothic Neo", sans-serif;
+    var(--font-body-face), "Noto Sans KR", "Apple SD Gothic Neo", sans-serif;
   --font-body:
-    "Pretendard Variable", Pretendard, "Apple SD Gothic Neo", sans-serif;
-  --font-outlier: "Noto Serif KR", "Noto Serif CJK KR", serif;
+    var(--font-body-face), "Noto Sans KR", "Apple SD Gothic Neo", sans-serif;
+  --font-outlier:
+    var(--font-display-face), "Noto Serif KR", "Noto Serif CJK KR", serif;
 
   --space-3xs: 0.25rem;
   --space-2xs: 0.5rem;

@@ -11,7 +11,7 @@ export default async function HomePage() {
     catalog.mode === "postgres" && process.env.DORAK_DEMO_AUTH !== "true";
   const [initialResult, locations] = await Promise.all([
     catalog.searchBranches("", undefined, {
-      limit: 60,
+      limit: 20,
       approvedOnly,
     }),
     catalog.listLocations({ approvedOnly }),
@@ -28,7 +28,7 @@ export default async function HomePage() {
     <>
       <SiteHeader />
 
-      <main className="page-shell home-page">
+      <main id="main-content" className="page-shell home-page">
         <Discovery
           branches={branches}
           locations={locations}

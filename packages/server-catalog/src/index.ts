@@ -1,5 +1,6 @@
 import type {
   BranchLocationGroup,
+  BranchSearchOptions,
   BranchSearchResponse,
   BranchSummary,
   CandidateStatus,
@@ -41,17 +42,23 @@ export class InMemoryCatalog {
   searchBranches(
     query = "",
     cuisine?: string,
-    options: Readonly<{
-      limit?: number;
-      offset?: number;
-      approvedOnly?: boolean;
-    }> = {},
+    options: Readonly<BranchSearchOptions> = {},
   ): BranchSearchResponse {
     const needle = normalise(query);
     const data = this.#branches.filter((branch) => {
       const matchesProvenance =
         !options.approvedOnly || branch.provenance === "approved_source";
       const matchesCuisine = !cuisine || branch.cuisine === cuisine;
+      const matchesDistrict =
+        !options.district || branch.district === options.district;
+      const matchesNeighborhood =
+        !options.neighborhood || branch.neighborhood === options.neighborhood;
+      const matchesPrice =
+        !options.priceBands?.length ||
+        options.priceBands.includes(branch.priceBand.length);
+      const matchesRating =
+        options.minRating === undefined ||
+        (branch.rating !== null && branch.rating >= options.minRating);
       const haystack = normalise(
         [
           branch.name,
@@ -67,6 +74,10 @@ export class InMemoryCatalog {
       return (
         matchesProvenance &&
         matchesCuisine &&
+        matchesDistrict &&
+        matchesNeighborhood &&
+        matchesPrice &&
+        matchesRating &&
         (!needle || haystack.includes(needle))
       );
     });
@@ -74,13 +85,38 @@ export class InMemoryCatalog {
     const total = data.length;
     const limit = Math.min(Math.max(Math.trunc(options.limit ?? 100), 1), 200);
     const offset = Math.max(Math.trunc(options.offset ?? 0), 0);
+    const sorted = data.toSorted((left, right) => {
+      if (options.sort === "rating") {
+        return (
+          (right.rating ?? -1) - (left.rating ?? -1) ||
+          right.reviewCount - left.reviewCount
+        );
+      }
+      if (options.sort === "reviews") {
+        return (
+          right.reviewCount - left.reviewCount ||
+          (right.rating ?? -1) - (left.rating ?? -1)
+        );
+      }
+      if (needle) {
+        return 0;
+      }
+      return (
+        right.reviewCount - left.reviewCount ||
+        (right.rating ?? -1) - (left.rating ?? -1) ||
+        left.name.localeCompare(right.name, "ko-KR")
+      );
+    });
 
     return {
-      data: data.slice(offset, offset + limit),
+      data: sorted.slice(offset, offset + limit),
       meta: {
         query,
         total,
         dataMode: "memory",
+        pageSize: limit,
+        sort: options.sort ?? "default",
+        ...(options.page === undefined ? {} : { page: options.page }),
       },
     };
   }
