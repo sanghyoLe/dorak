@@ -72,7 +72,7 @@ export default async function BranchPage({ params }: BranchPageProps) {
         <nav className="breadcrumb" aria-label="현재 위치">
           <Link href="/">홈</Link>
           <span aria-hidden="true">›</span>
-          <Link href="/">서울 음식점</Link>
+          <Link href="/">서울 식당</Link>
           <span aria-hidden="true">›</span>
           <span>{branch.name}</span>
         </nav>
@@ -83,8 +83,10 @@ export default async function BranchPage({ params }: BranchPageProps) {
           </p>
           <h1>{branch.name}</h1>
           <div className="branch-heading__status" aria-label="정보 상태">
-            <span>영업 상태 최신 확인 필요</span>
-            {branch.provenance === "synthetic" ? <span>예시 식당</span> : null}
+            <span data-state="attention">영업 정보 확인 전</span>
+            {branch.provenance === "synthetic" ? (
+              <span data-state="sample">예시 식당</span>
+            ) : null}
           </div>
         </header>
 
@@ -401,7 +403,7 @@ export default async function BranchPage({ params }: BranchPageProps) {
 
         <Link className="back-to-results" href="/">
           <ChevronLeft aria-hidden="true" size={18} strokeWidth={2} />
-          서울 음식점 목록으로
+          서울 식당 목록으로
         </Link>
       </main>
 
