@@ -215,6 +215,13 @@ export class PostgresCatalog {
     const offset = Math.max(Math.trunc(options.offset ?? 0), 0);
     if (!needle) {
       const rows = await this.#database.raw<BranchRow[]>`
+        WITH total AS MATERIALIZED (
+          SELECT count(*)::int AS count
+          FROM catalog.branches AS counted_branch
+          WHERE counted_branch.status = 'active'
+            AND (${cuisine ?? null}::text IS NULL OR counted_branch.cuisine_key = ${cuisine ?? null})
+            AND (${options.approvedOnly ?? false} = false OR counted_branch.provenance = 'approved_source')
+        )
         SELECT
           branch.id::text,
           branch.public_id AS "publicId",
@@ -239,10 +246,11 @@ export class PostgresCatalog {
           ST_X(branch.location::geometry)::float8 AS longitude,
           source.display_name AS "sourceName",
           branch.last_verified_at AS "lastVerifiedAt",
-          count(*) OVER()::int AS "totalCount"
+          total.count AS "totalCount"
         FROM catalog.branches AS branch
         LEFT JOIN ingestion.sources AS source
           ON source.source_key = branch.source_key
+        CROSS JOIN total
         WHERE branch.status = 'active'
           AND (${cuisine ?? null}::text IS NULL OR branch.cuisine_key = ${cuisine ?? null})
           AND (${options.approvedOnly ?? false} = false OR branch.provenance = 'approved_source')
@@ -268,6 +276,33 @@ export class PostgresCatalog {
     const pattern = `%${escapedNeedle}%`;
     const prefixPattern = `${escapedNeedle}%`;
     const rows = await this.#database.raw<BranchRow[]>`
+      WITH candidates AS MATERIALIZED (
+        SELECT candidate.id
+        FROM catalog.branches AS candidate
+        WHERE candidate.status = 'active'
+          AND (${cuisine ?? null}::text IS NULL OR candidate.cuisine_key = ${cuisine ?? null})
+          AND (${options.approvedOnly ?? false} = false OR candidate.provenance = 'approved_source')
+          AND candidate.search_text ILIKE ${pattern} ESCAPE '\\'
+
+        UNION
+
+        SELECT candidate.id
+        FROM catalog.branches AS candidate
+        WHERE candidate.status = 'active'
+          AND (${cuisine ?? null}::text IS NULL OR candidate.cuisine_key = ${cuisine ?? null})
+          AND (${options.approvedOnly ?? false} = false OR candidate.provenance = 'approved_source')
+          AND candidate.name % ${needle}
+
+        UNION
+
+        SELECT candidate.id
+        FROM catalog.branches AS candidate
+        WHERE candidate.status = 'active'
+          AND (${cuisine ?? null}::text IS NULL OR candidate.cuisine_key = ${cuisine ?? null})
+          AND (${options.approvedOnly ?? false} = false OR candidate.provenance = 'approved_source')
+          AND to_tsvector('simple'::regconfig, candidate.search_text)
+            @@ plainto_tsquery('simple'::regconfig, ${needle})
+      )
       SELECT
         branch.id::text,
         branch.public_id AS "publicId",
@@ -294,18 +329,10 @@ export class PostgresCatalog {
         branch.last_verified_at AS "lastVerifiedAt",
         count(*) OVER()::int AS "totalCount"
       FROM catalog.branches AS branch
+      JOIN candidates AS candidate ON candidate.id = branch.id
       LEFT JOIN ingestion.sources AS source
         ON source.source_key = branch.source_key
-        WHERE branch.status = 'active'
-          AND (${cuisine ?? null}::text IS NULL OR branch.cuisine_key = ${cuisine ?? null})
-          AND (${options.approvedOnly ?? false} = false OR branch.provenance = 'approved_source')
-        AND (
-          ${needle} = ''
-          OR branch.search_text ILIKE ${pattern} ESCAPE '\\'
-          OR branch.name % ${needle}
-          OR to_tsvector('simple'::regconfig, branch.search_text)
-            @@ plainto_tsquery('simple'::regconfig, ${needle})
-        )
+      WHERE branch.status = 'active'
       ORDER BY
         CASE
           WHEN ${needle} = '' THEN 0

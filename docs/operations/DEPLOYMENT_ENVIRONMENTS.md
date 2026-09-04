@@ -130,6 +130,8 @@ Vercel의 자동 배포만으로 DB migration을 암묵 실행하지 않는다.
 
 모노레포 루트의 workspace package를 함께 빌드해야 하므로 `vercel.json`의 build command는 루트로 이동한 뒤 `@dorak/web`만 필터링한다. schema migration은 배포 build command에 넣지 않고 production 배포 전에 별도로 실행한다.
 
+Node.js 함수의 기본 리전은 미국이므로 `regions: ["sin1"]`을 코드에 고정한다. 현재 Neon도 `ap-southeast-1`에 있어 함수와 DB가 같은 싱가포르 리전에서 통신한다.
+
 로컬 CLI 배포는 저장소 루트에서 실행하고 `.vercelignore`로 `.turbo`, `node_modules`, 원본 CSV와 빌드 산출물을 제외한다. `apps/web` 폴더만 업로드하면 workspace package가 누락되므로 사용하지 않는다.
 
 ## 6. Neon 준비

@@ -29,7 +29,7 @@ try {
   `;
 
   assert(state);
-  assert.equal(state.appliedMigrations, 8);
+  assert.equal(state.appliedMigrations, 9);
   assert.equal(state.branchTable, "catalog.branches");
   assert.equal(state.reviewTable, "community.reviews");
   assert.equal(state.postgisInstalled, true);
