@@ -1,0 +1,289 @@
+openapi: 3.1.2
+info:
+  title: DORAK Public API
+  version: 0.3.0
+  description: |
+    도락 소비자 표면의 첫 실행 계약입니다. 현재 응답 데이터는 명시적으로
+    synthetic이며 실제 식당·평점 데이터로 해석해서는 안 됩니다.
+servers:
+  - url: http://localhost:3000/api
+    description: Local development
+tags:
+  - name: system
+  - name: branches
+  - name: reviews
+paths:
+  /health:
+    get:
+      operationId: getHealth
+      tags: [system]
+      responses:
+        "200":
+          description: Service is healthy.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data:
+                    type: object
+                    required: [service, status, dataMode]
+                    properties:
+                      service: { const: dorak-web }
+                      status: { const: ok }
+                      dataMode: { $ref: "#/components/schemas/CatalogMode" }
+  /v1/branches:
+    get:
+      operationId: searchBranches
+      tags: [branches]
+      parameters:
+        - name: q
+          in: query
+          schema: { type: string, maxLength: 100 }
+        - name: cuisine
+          in: query
+          schema: { $ref: "#/components/schemas/CuisineKey" }
+      responses:
+        "200":
+          description: Matching restaurant branches.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/BranchSearchResponse" }
+  /v1/branches/{publicId}:
+    get:
+      operationId: getBranch
+      tags: [branches]
+      parameters:
+        - $ref: "#/components/parameters/BranchPublicId"
+      responses:
+        "200":
+          description: One restaurant branch.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data: { $ref: "#/components/schemas/BranchSummary" }
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /v1/branches/{publicId}/reviews:
+    get:
+      operationId: listBranchReviews
+      tags: [reviews]
+      parameters:
+        - $ref: "#/components/parameters/BranchPublicId"
+      responses:
+        "200":
+          description: Published reviews for one branch.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data, meta]
+                properties:
+                  data:
+                    type: array
+                    items: { $ref: "#/components/schemas/ReviewSummary" }
+                  meta:
+                    type: object
+                    required: [total]
+                    properties:
+                      total: { type: integer, minimum: 0 }
+    post:
+      operationId: createBranchReview
+      tags: [reviews]
+      security:
+        - sessionCookie: []
+      parameters:
+        - $ref: "#/components/parameters/BranchPublicId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ReviewSubmission" }
+      responses:
+        "201":
+          description: Review published as a self-reported visit.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data: { $ref: "#/components/schemas/ReviewSummary" }
+        "401": { $ref: "#/components/responses/ProblemResponse" }
+        "403": { $ref: "#/components/responses/ProblemResponse" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/ProblemResponse" }
+        "422": { $ref: "#/components/responses/ProblemResponse" }
+        "429": { $ref: "#/components/responses/ProblemResponse" }
+components:
+  securitySchemes:
+    sessionCookie:
+      type: apiKey
+      in: cookie
+      name: dorak.session_token
+  parameters:
+    BranchPublicId:
+      name: publicId
+      in: path
+      required: true
+      schema:
+        type: string
+        pattern: "^br_[A-Za-z0-9_-]{16,32}$"
+  responses:
+    ProblemResponse:
+      description: Request was rejected.
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Problem" }
+    NotFound:
+      description: Resource not found.
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Problem" }
+  schemas:
+    CatalogMode:
+      type: string
+      enum: [memory, postgres]
+    DataProvenance:
+      type: string
+      enum: [synthetic, approved_source]
+    CuisineKey:
+      type: string
+      enum: [korean, noodle, japanese, chinese, western, cafe]
+    BranchSummary:
+      type: object
+      additionalProperties: false
+      required:
+        - id
+        - publicId
+        - name
+        - neighborhood
+        - district
+        - address
+        - cuisine
+        - cuisineLabel
+        - shortDescription
+        - signatureMenu
+        - priceBand
+        - rating
+        - reviewCount
+        - provenance
+      properties:
+        id: { type: string, format: uuid }
+        publicId:
+          type: string
+          pattern: "^br_[A-Za-z0-9_-]{16,32}$"
+        name: { type: string, minLength: 1, maxLength: 120 }
+        neighborhood: { type: string, minLength: 1, maxLength: 80 }
+        district: { type: string, minLength: 1, maxLength: 80 }
+        address: { type: string, minLength: 1, maxLength: 240 }
+        phone:
+          type: [string, "null"]
+          maxLength: 80
+        websiteUrl:
+          type: [string, "null"]
+          format: uri
+        cuisine: { $ref: "#/components/schemas/CuisineKey" }
+        cuisineLabel: { type: string, minLength: 1, maxLength: 40 }
+        shortDescription: { type: string, minLength: 1, maxLength: 240 }
+        signatureMenu:
+          type: array
+          maxItems: 8
+          items: { type: string, minLength: 1, maxLength: 80 }
+        priceBand:
+          type: string
+          enum: [₩, ₩₩, ₩₩₩, ₩₩₩₩]
+        rating:
+          type: [number, "null"]
+          minimum: 1
+          maximum: 5
+        reviewCount: { type: integer, minimum: 0 }
+        provenance: { $ref: "#/components/schemas/DataProvenance" }
+        latitude:
+          type: [number, "null"]
+          minimum: -90
+          maximum: 90
+        longitude:
+          type: [number, "null"]
+          minimum: -180
+          maximum: 180
+        sourceName:
+          type: [string, "null"]
+          maxLength: 120
+        lastVerifiedAt:
+          type: [string, "null"]
+          format: date-time
+    BranchSearchResponse:
+      type: object
+      additionalProperties: false
+      required: [data, meta]
+      properties:
+        data:
+          type: array
+          items: { $ref: "#/components/schemas/BranchSummary" }
+        meta:
+          type: object
+          additionalProperties: false
+          required: [query, total, dataMode]
+          properties:
+            query: { type: string }
+            total: { type: integer, minimum: 0 }
+            dataMode: { $ref: "#/components/schemas/CatalogMode" }
+    VisitVerification:
+      type: string
+      enum: [self_reported, receipt, reservation]
+    ReviewSummary:
+      type: object
+      additionalProperties: false
+      required:
+        - publicId
+        - authorName
+        - rating
+        - body
+        - visitedOn
+        - identityVerified
+        - visitVerification
+        - createdAt
+      properties:
+        publicId:
+          type: string
+          pattern: "^rv_[A-Za-z0-9_-]{16,32}$"
+        authorName: { type: string, minLength: 2, maxLength: 20 }
+        rating: { type: integer, minimum: 1, maximum: 5 }
+        body: { type: string, minLength: 20, maxLength: 1000 }
+        visitedOn: { type: [string, "null"], format: date }
+        identityVerified: { type: boolean }
+        visitVerification: { $ref: "#/components/schemas/VisitVerification" }
+        createdAt: { type: string, format: date-time }
+    ReviewSubmission:
+      type: object
+      additionalProperties: false
+      required: [authorName, rating, body, visitedOn, visitAttested]
+      properties:
+        authorName: { type: string, minLength: 2, maxLength: 20 }
+        rating: { type: integer, minimum: 1, maximum: 5 }
+        body: { type: string, minLength: 20, maxLength: 1000 }
+        visitedOn: { type: string, format: date }
+        visitAttested: { const: true }
+        website: { type: string, maxLength: 0 }
+    Problem:
+      type: object
+      additionalProperties: false
+      required: [error]
+      properties:
+        error:
+          type: object
+          additionalProperties: false
+          required: [code, message]
+          properties:
+            code: { type: string }
+            message: { type: string }
+        meta:
+          type: object
+          additionalProperties: false
+          properties:
+            requestId: { type: string, format: uuid }

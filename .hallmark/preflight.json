@@ -1,0 +1,12 @@
+{
+  "scannedAt": "2026-09-02",
+  "projectState": "documentation-only before this build",
+  "framework": "pnpm monorepo with Next.js and NestJS",
+  "existingDesignSource": "DESIGN_SYSTEM.md",
+  "preserved": [
+    "all existing Markdown product and architecture documents",
+    "paper, ink, clay, forest, brass palette direction",
+    "Pretendard and Noto Serif KR typography direction"
+  ],
+  "conflicts": []
+}

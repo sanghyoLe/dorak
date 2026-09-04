@@ -1,0 +1,42 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.dorak.kr/events/catalog.branch_created.v1.json",
+  "title": "catalog.branch_created v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "event_id",
+    "event_name",
+    "schema_version",
+    "occurred_at",
+    "aggregate_id",
+    "payload"
+  ],
+  "properties": {
+    "event_id": {
+      "type": "string",
+      "pattern": "^evt_[A-Za-z0-9_-]{16,32}$"
+    },
+    "event_name": { "const": "catalog.branch_created" },
+    "schema_version": { "const": 1 },
+    "occurred_at": { "type": "string", "format": "date-time" },
+    "aggregate_id": { "type": "string", "format": "uuid" },
+    "payload": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["branch_public_id", "name", "district", "provenance"],
+      "properties": {
+        "branch_public_id": {
+          "type": "string",
+          "pattern": "^br_[A-Za-z0-9_-]{16,32}$"
+        },
+        "name": { "type": "string", "minLength": 1, "maxLength": 120 },
+        "district": { "type": "string", "minLength": 1, "maxLength": 80 },
+        "provenance": {
+          "type": "string",
+          "enum": ["synthetic", "approved_source"]
+        }
+      }
+    }
+  }
+}

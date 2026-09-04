@@ -1,0 +1,34 @@
+{
+  "name": "dorak",
+  "version": "0.1.0",
+  "private": true,
+  "description": "도락 — 좋은 식당을 찾는 즐거움",
+  "packageManager": "pnpm@9.15.9",
+  "engines": {
+    "node": ">=20.9"
+  },
+  "scripts": {
+    "build": "turbo run build",
+    "db:migrate": "pnpm --filter @dorak/db migrate",
+    "db:seed": "pnpm --filter @dorak/server-catalog seed",
+    "db:smoke": "pnpm --filter @dorak/db smoke",
+    "data:import:seoul": "node scripts/import-seoul-restaurants.mjs",
+    "data:enrich:seoul": "node scripts/enrich-seoul-restaurants.mjs",
+    "dev": "turbo run dev --parallel",
+    "format:check": "prettier --check .",
+    "smoke:http": "node scripts/http-smoke.mjs",
+    "test": "turbo run test",
+    "typecheck": "turbo run typecheck",
+    "visual:test": "node scripts/visual-smoke.mjs"
+  },
+  "devDependencies": {
+    "@types/node": "26.4.1",
+    "prettier": "3.9.6",
+    "puppeteer-core": "25.9.0",
+    "postgres": "3.4.9",
+    "tsx": "4.23.13",
+    "turbo": "2.10.12",
+    "typescript": "7.0.2",
+    "vitest": "4.1.11"
+  }
+}
