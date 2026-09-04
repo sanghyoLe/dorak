@@ -267,6 +267,18 @@ export function Discovery({
     return matches;
   }, [cuisine, loadedBranches, query, sort]);
 
+  const popularLocations = useMemo(
+    () =>
+      [...locations]
+        .toSorted(
+          (left, right) =>
+            right.count - left.count ||
+            left.district.localeCompare(right.district, "ko-KR"),
+        )
+        .slice(0, 8),
+    [locations],
+  );
+
   function submitSearch(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setQuery(draftQuery.trim());
@@ -286,6 +298,25 @@ export function Discovery({
     setSearchState("idle");
   }
 
+  function focusDirectory() {
+    document.getElementById("directory")?.scrollIntoView({
+      behavior: "smooth",
+      block: "start",
+    });
+  }
+
+  function chooseLandingLocation(value: string) {
+    chooseNeighborhood(value);
+    focusDirectory();
+  }
+
+  function chooseLandingCuisine(value: (typeof CUISINES)[number]["key"]) {
+    if (value === "all") return;
+    setCuisine(value);
+    setSearchState("success");
+    focusDirectory();
+  }
+
   function toggleSaved(publicId: string) {
     setSaved((current) => {
       const next = new Set(current);
@@ -296,65 +327,137 @@ export function Discovery({
   }
 
   return (
-    <section className="directory" aria-labelledby="directory-title">
-      <header className="directory-heading">
-        <h1 id="directory-title">서울 음식점 찾기</h1>
-        <p>동네와 메뉴로 식당을 찾고 방문자의 구체적인 기록을 함께 읽습니다.</p>
-      </header>
-
-      <form className="search-panel" role="search" onSubmit={submitSearch}>
-        <div className="location-field" aria-label="검색 지역">
-          <MapPin aria-hidden="true" size={20} strokeWidth={2} />
-          <span>
-            <small>지역</small>
-            서울 전체
-          </span>
+    <>
+      <section className="home-portal" aria-labelledby="home-title">
+        <div className="home-portal__intro">
+          <div className="home-portal__title">
+            <p className="home-portal__eyebrow">SEOUL · RESTAURANT INDEX</p>
+            <h1 id="home-title">
+              오늘 갈 식당,
+              <br />
+              도락에서 고르세요.
+            </h1>
+          </div>
+          <p>
+            동네와 음식, 방문자의 기록을 한 번에 살펴보고
+            <br className="home-portal__break" />
+            내게 맞는 식당을 천천히 고릅니다.
+          </p>
         </div>
-        <label className="keyword-field" htmlFor="branch-search">
-          <Search aria-hidden="true" size={20} strokeWidth={2} />
-          <span className="sr-only">식당 검색어</span>
-          <input
-            id="branch-search"
-            name="q"
-            type="search"
-            value={draftQuery}
-            onChange={(event) => setDraftQuery(event.target.value)}
-            placeholder="식당명, 동네, 음식, 메뉴"
-            autoComplete="off"
-          />
-        </label>
-        <button
-          className="search-button"
-          type="submit"
-          data-state={searchState}
-          aria-busy={searchState === "loading"}
+
+        <form
+          className="search-panel home-search"
+          role="search"
+          onSubmit={submitSearch}
         >
-          {searchState === "loading" ? "검색 중" : "검색"}
-        </button>
-        <p className="search-helper" aria-live="polite">
-          {searchState === "loading"
-            ? "검색 조건을 반영하고 있습니다."
-            : "서울 전체 데이터에서 검색"}
-        </p>
-      </form>
+          <div className="location-field" aria-label="검색 지역">
+            <MapPin aria-hidden="true" size={20} strokeWidth={2} />
+            <span>
+              <small>지역</small>
+              서울 전체
+            </span>
+          </div>
+          <label className="keyword-field" htmlFor="branch-search">
+            <Search aria-hidden="true" size={20} strokeWidth={2} />
+            <span className="sr-only">식당 검색어</span>
+            <input
+              id="branch-search"
+              name="q"
+              type="search"
+              value={draftQuery}
+              onChange={(event) => setDraftQuery(event.target.value)}
+              placeholder="식당명, 동네, 음식, 메뉴"
+              autoComplete="off"
+            />
+          </label>
+          <button
+            className="search-button"
+            type="submit"
+            data-state={searchState}
+            aria-busy={searchState === "loading"}
+          >
+            {searchState === "loading" ? "검색 중" : "검색"}
+          </button>
+          <p className="search-helper" aria-live="polite">
+            {searchState === "loading"
+              ? "검색 조건을 반영하고 있습니다."
+              : "서울 전체 데이터에서 검색"}
+          </p>
+        </form>
 
-      <details className="mobile-filter">
-        <summary>
-          검색 조건
-          <ChevronDown aria-hidden="true" size={16} strokeWidth={2} />
-        </summary>
-        <FilterControls
-          cuisine={cuisine}
-          locations={locations}
-          query={query}
-          onCuisine={setCuisine}
-          onNeighborhood={chooseNeighborhood}
-          onClear={clearFilters}
-        />
-      </details>
+        <div className="portal-rails">
+          <section
+            className="portal-rail"
+            aria-labelledby="popular-location-title"
+          >
+            <div className="portal-rail__heading">
+              <h2 id="popular-location-title">인기 지역</h2>
+              <span>{locations.length.toLocaleString("ko-KR")}개 지역</span>
+            </div>
+            <div className="portal-link-grid">
+              {popularLocations.map((location) => (
+                <button
+                  key={location.district}
+                  type="button"
+                  className="portal-link"
+                  onClick={() => chooseLandingLocation(location.district)}
+                >
+                  <span>{location.district}</span>
+                  <small>{location.count.toLocaleString("ko-KR")}곳</small>
+                </button>
+              ))}
+            </div>
+          </section>
 
-      <div className="directory-layout">
-        <aside className="filter-sidebar" aria-label="검색 조건">
+          <section
+            className="portal-rail"
+            aria-labelledby="popular-cuisine-title"
+          >
+            <div className="portal-rail__heading">
+              <h2 id="popular-cuisine-title">음식 장르</h2>
+              <span>서울 전체</span>
+            </div>
+            <div className="portal-link-grid portal-link-grid--cuisine">
+              {CUISINES.filter((item) => item.key !== "all").map((item) => (
+                <button
+                  key={item.key}
+                  type="button"
+                  className="portal-link"
+                  onClick={() => chooseLandingCuisine(item.key)}
+                >
+                  <span>{item.label}</span>
+                  <small>찾아보기</small>
+                </button>
+              ))}
+            </div>
+          </section>
+        </div>
+
+        <div className="trust-strip" aria-label="도락의 정보 원칙">
+          <span>식당 정보는 출처를 표시합니다.</span>
+          <span>리뷰에는 방문일을 남깁니다.</span>
+          <span>저장한 식당은 브라우저에 보관됩니다.</span>
+        </div>
+      </section>
+
+      <section
+        className="directory"
+        id="directory"
+        aria-labelledby="directory-title"
+      >
+        <header className="directory-heading">
+          <div>
+            <p className="directory-heading__eyebrow">THE WHOLE INDEX</p>
+            <h2 id="directory-title">서울 식당 둘러보기</h2>
+          </div>
+          <p>지역과 메뉴로 좁혀보고, 방문자의 구체적인 기록을 함께 읽습니다.</p>
+        </header>
+
+        <details className="mobile-filter">
+          <summary>
+            검색 조건
+            <ChevronDown aria-hidden="true" size={16} strokeWidth={2} />
+          </summary>
           <FilterControls
             cuisine={cuisine}
             locations={locations}
@@ -363,200 +466,217 @@ export function Discovery({
             onNeighborhood={chooseNeighborhood}
             onClear={clearFilters}
           />
-        </aside>
+        </details>
 
-        <div className="results">
-          <div className="result-heading">
-            <div>
-              <h2>검색 결과</h2>
-              <p aria-live="polite" aria-atomic="true">
-                <strong>{resultTotal.toLocaleString("ko-KR")}곳</strong>
-                {resultTotal > filtered.length ? (
-                  <small> · 현재 {filtered.length}곳 표시</small>
-                ) : null}
-                {query ? ` · “${query}”` : " · 서울 전체"}
-              </p>
+        <div className="directory-layout">
+          <aside className="filter-sidebar" aria-label="검색 조건">
+            <FilterControls
+              cuisine={cuisine}
+              locations={locations}
+              query={query}
+              onCuisine={setCuisine}
+              onNeighborhood={chooseNeighborhood}
+              onClear={clearFilters}
+            />
+          </aside>
+
+          <div className="results">
+            <div className="result-heading">
+              <div>
+                <h2>검색 결과</h2>
+                <p aria-live="polite" aria-atomic="true">
+                  <strong>{resultTotal.toLocaleString("ko-KR")}곳</strong>
+                  {resultTotal > filtered.length ? (
+                    <small> · 현재 {filtered.length}곳 표시</small>
+                  ) : null}
+                  {query ? ` · “${query}”` : " · 서울 전체"}
+                </p>
+              </div>
+              <span>공개 리뷰 기준</span>
             </div>
-            <span>공개 리뷰 기준</span>
-          </div>
 
-          <div className="sort-tabs" aria-label="결과 정렬">
-            <button
-              type="button"
-              aria-pressed={sort === "default"}
-              onClick={() => setSort("default")}
-            >
-              기본순
-            </button>
-            <button
-              type="button"
-              aria-pressed={sort === "rating"}
-              onClick={() => setSort("rating")}
-            >
-              평점순
-            </button>
-            <button
-              type="button"
-              aria-pressed={sort === "reviews"}
-              onClick={() => setSort("reviews")}
-            >
-              리뷰 많은 순
-            </button>
-          </div>
+            <div className="sort-tabs" aria-label="결과 정렬">
+              <button
+                type="button"
+                aria-pressed={sort === "default"}
+                onClick={() => setSort("default")}
+              >
+                기본순
+              </button>
+              <button
+                type="button"
+                aria-pressed={sort === "rating"}
+                onClick={() => setSort("rating")}
+              >
+                평점순
+              </button>
+              <button
+                type="button"
+                aria-pressed={sort === "reviews"}
+                onClick={() => setSort("reviews")}
+              >
+                리뷰 많은 순
+              </button>
+            </div>
 
-          {filtered.length > 0 ? (
-            <ol className="restaurant-list">
-              {filtered.map((branch) => {
-                const isSaved = saved.has(branch.publicId);
-                return (
-                  <li className="restaurant-row" key={branch.publicId}>
-                    <div
-                      className="photo-pending"
-                      role="img"
-                      aria-label={`${branch.name} 사진 정보 없음`}
-                    >
-                      <span>{branch.cuisineLabel}</span>
-                      <small>사진 정보 없음</small>
-                    </div>
-
-                    <div className="restaurant-main">
-                      <p className="restaurant-path">
-                        {branch.neighborhood} · {branch.district} /{" "}
-                        {branch.cuisineLabel}
-                      </p>
-                      <h3>
-                        <Link
-                          href={`/restaurants/${branch.publicId}`}
-                          aria-label={branch.name}
-                        >
-                          <span
-                            className="restaurant-name-short"
-                            aria-hidden="true"
-                          >
-                            {compactRestaurantName(branch.name)}
-                          </span>
-                          <span
-                            className="restaurant-name-full"
-                            aria-hidden="true"
-                          >
-                            {branch.name}
-                          </span>
-                        </Link>
-                      </h3>
-                      <p className="restaurant-description">
-                        {branch.shortDescription}
-                      </p>
-                      {branch.signatureMenu.length > 0 ? (
-                        <ul className="menu-tags" aria-label="대표 메뉴">
-                          {branch.signatureMenu.map((menu) => (
-                            <li key={menu}>{menu}</li>
-                          ))}
-                        </ul>
-                      ) : null}
-                      <p className="restaurant-address">
-                        <MapPin aria-hidden="true" size={16} strokeWidth={2} />
-                        {branch.address}
-                      </p>
-                    </div>
-
-                    <aside
-                      className="restaurant-facts"
-                      aria-label="평가와 가격"
-                    >
-                      <div>
-                        <span>평점</span>
-                        <strong>
-                          {branch.rating === null
-                            ? "—"
-                            : branch.rating.toFixed(1)}
-                        </strong>
-                        <small>
-                          {branch.reviewCount ? "리뷰 평균" : "평가 전"}
-                        </small>
-                      </div>
-                      <dl>
-                        <div>
-                          <dt>리뷰</dt>
-                          <dd>{branch.reviewCount}건</dd>
-                        </div>
-                        <div>
-                          <dt>가격대</dt>
-                          <dd>
-                            {branch.provenance === "approved_source"
-                              ? "확인 전"
-                              : branch.priceBand}
-                          </dd>
-                        </div>
-                      </dl>
-                      <button
-                        type="button"
-                        className="save-button"
-                        aria-pressed={isSaved}
-                        onClick={() => toggleSaved(branch.publicId)}
+            {filtered.length > 0 ? (
+              <ol className="restaurant-list">
+                {filtered.map((branch) => {
+                  const isSaved = saved.has(branch.publicId);
+                  return (
+                    <li className="restaurant-row" key={branch.publicId}>
+                      <div
+                        className="photo-pending"
+                        role="img"
+                        aria-label={`${branch.name} 사진 정보 없음`}
                       >
-                        {isSaved ? (
-                          <Check
-                            aria-hidden="true"
-                            size={16}
-                            strokeWidth={2.5}
-                          />
-                        ) : (
-                          <Bookmark
+                        <span>{branch.cuisineLabel}</span>
+                        <small>사진 정보 없음</small>
+                      </div>
+
+                      <div className="restaurant-main">
+                        <p className="restaurant-path">
+                          {branch.neighborhood} · {branch.district} /{" "}
+                          {branch.cuisineLabel}
+                        </p>
+                        <h3>
+                          <Link
+                            href={`/restaurants/${branch.publicId}`}
+                            aria-label={branch.name}
+                          >
+                            <span
+                              className="restaurant-name-short"
+                              aria-hidden="true"
+                            >
+                              {compactRestaurantName(branch.name)}
+                            </span>
+                            <span
+                              className="restaurant-name-full"
+                              aria-hidden="true"
+                            >
+                              {branch.name}
+                            </span>
+                          </Link>
+                        </h3>
+                        <p className="restaurant-description">
+                          {branch.shortDescription}
+                        </p>
+                        {branch.signatureMenu.length > 0 ? (
+                          <ul className="menu-tags" aria-label="대표 메뉴">
+                            {branch.signatureMenu.map((menu) => (
+                              <li key={menu}>{menu}</li>
+                            ))}
+                          </ul>
+                        ) : null}
+                        <p className="restaurant-address">
+                          <MapPin
                             aria-hidden="true"
                             size={16}
                             strokeWidth={2}
                           />
-                        )}
-                        {isSaved ? "저장됨" : "저장"}
-                      </button>
-                    </aside>
-                  </li>
-                );
-              })}
-            </ol>
-          ) : (
-            <div className="empty-state" role="status">
-              <h3>조건에 맞는 식당이 없습니다.</h3>
-              <p>검색어나 음식 장르를 바꿔보세요.</p>
-              <button type="button" onClick={clearFilters}>
-                검색 조건 초기화
-              </button>
-            </div>
-          )}
+                          {branch.address}
+                        </p>
+                      </div>
 
-          {filtered.length > 0 ? (
-            <div
-              ref={loadMoreSentinelRef}
-              className="load-more-status"
-              aria-live="polite"
-              aria-busy={loadingMore}
-            >
-              {loadingMore ? (
-                <p>다음 식당을 불러오는 중…</p>
-              ) : loadError ? (
-                <>
-                  <p>{loadError}</p>
-                  <button type="button" onClick={() => void loadNextPage()}>
-                    다시 불러오기
-                  </button>
-                </>
-              ) : hasMore ? (
-                <>
-                  <p>스크롤하면 다음 식당을 계속 보여드립니다.</p>
-                  <button type="button" onClick={() => void loadNextPage()}>
-                    다음 {PAGE_SIZE}곳 보기
-                  </button>
-                </>
-              ) : (
-                <p>
-                  전체 {resultTotal.toLocaleString("ko-KR")}곳을 확인했습니다.
-                </p>
-              )}
-            </div>
-          ) : null}
+                      <aside
+                        className="restaurant-facts"
+                        aria-label="평가와 가격"
+                      >
+                        <div>
+                          <span>평점</span>
+                          <strong>
+                            {branch.rating === null
+                              ? "—"
+                              : branch.rating.toFixed(1)}
+                          </strong>
+                          <small>
+                            {branch.reviewCount ? "리뷰 평균" : "평가 전"}
+                          </small>
+                        </div>
+                        <dl>
+                          <div>
+                            <dt>리뷰</dt>
+                            <dd>{branch.reviewCount}건</dd>
+                          </div>
+                          <div>
+                            <dt>가격대</dt>
+                            <dd>
+                              {branch.provenance === "approved_source"
+                                ? "확인 전"
+                                : branch.priceBand}
+                            </dd>
+                          </div>
+                        </dl>
+                        <button
+                          type="button"
+                          className="save-button"
+                          aria-pressed={isSaved}
+                          onClick={() => toggleSaved(branch.publicId)}
+                        >
+                          {isSaved ? (
+                            <Check
+                              aria-hidden="true"
+                              size={16}
+                              strokeWidth={2.5}
+                            />
+                          ) : (
+                            <Bookmark
+                              aria-hidden="true"
+                              size={16}
+                              strokeWidth={2}
+                            />
+                          )}
+                          {isSaved ? "저장됨" : "저장"}
+                        </button>
+                      </aside>
+                    </li>
+                  );
+                })}
+              </ol>
+            ) : (
+              <div className="empty-state" role="status">
+                <h3>조건에 맞는 식당이 없습니다.</h3>
+                <p>검색어나 음식 장르를 바꿔보세요.</p>
+                <button type="button" onClick={clearFilters}>
+                  검색 조건 초기화
+                </button>
+              </div>
+            )}
+
+            {filtered.length > 0 ? (
+              <div
+                ref={loadMoreSentinelRef}
+                className="load-more-status"
+                aria-live="polite"
+                aria-busy={loadingMore}
+              >
+                {loadingMore ? (
+                  <p>다음 식당을 불러오는 중…</p>
+                ) : loadError ? (
+                  <>
+                    <p>{loadError}</p>
+                    <button type="button" onClick={() => void loadNextPage()}>
+                      다시 불러오기
+                    </button>
+                  </>
+                ) : hasMore ? (
+                  <>
+                    <p>스크롤하면 다음 식당을 계속 보여드립니다.</p>
+                    <button type="button" onClick={() => void loadNextPage()}>
+                      다음 {PAGE_SIZE}곳 보기
+                    </button>
+                  </>
+                ) : (
+                  <p>
+                    전체 {resultTotal.toLocaleString("ko-KR")}곳을 확인했습니다.
+                  </p>
+                )}
+              </div>
+            ) : null}
+          </div>
         </div>
-      </div>
-    </section>
+      </section>
+    </>
   );
 }
 

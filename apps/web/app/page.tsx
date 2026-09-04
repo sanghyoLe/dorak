@@ -1,5 +1,3 @@
-import Link from "next/link";
-
 import { Discovery } from "../components/discovery";
 import { SiteFooter } from "../components/site-footer";
 import { SiteHeader } from "../components/site-header";
@@ -30,13 +28,7 @@ export default async function HomePage() {
     <>
       <SiteHeader />
 
-      <main className="page-shell">
-        <nav className="breadcrumb" aria-label="현재 위치">
-          <Link href="/">홈</Link>
-          <span aria-hidden="true">›</span>
-          <span>서울 음식점</span>
-        </nav>
-
+      <main className="page-shell home-page">
         <Discovery
           branches={branches}
           locations={locations}
