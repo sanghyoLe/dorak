@@ -71,6 +71,25 @@ DORAK_DEMO_AUTH
 
 `NEXT_PUBLIC_KAKAO_MAP_APP_KEY`는 카카오 지도 JavaScript 키라 브라우저에 노출되는 값이다. 카카오 개발자 콘솔에 localhost와 실제 배포 도메인을 등록한다. `DATABASE_URL`, OAuth secret, Better Auth secret, 운영자 비밀번호를 `NEXT_PUBLIC_*` 이름으로 만들지 않는다.
 
+### Google OAuth (GCP)
+
+Google Cloud Console의 OAuth 클라이언트에 아래 값을 등록한다. Production의
+`BETTER_AUTH_URL`과 callback origin은 항상 같은 공개 도메인을 사용해야 한다.
+
+```text
+Authorized JavaScript origins
+http://localhost:3000
+https://web-delta-six-52.vercel.app
+
+Authorized redirect URIs
+http://localhost:3000/api/auth/callback/google
+https://web-delta-six-52.vercel.app/api/auth/callback/google
+```
+
+Vercel Preview는 배포마다 호스트가 바뀌므로 고정 redirect URI를 제공하지 않는다.
+Preview에서는 demo auth를 유지하고, 특정 preview에서 OAuth를 시험할 때만 해당
+preview URL의 callback을 OAuth 클라이언트에 임시로 추가한다.
+
 ### browser-visible
 
 ```text
