@@ -4,6 +4,7 @@ import { betterAuth } from "better-auth";
 import { Pool } from "pg";
 
 const databaseUrl = process.env.DATABASE_URL;
+const authDatabaseUrl = getAuthDatabaseUrl(databaseUrl);
 const authSecret = process.env.BETTER_AUTH_SECRET;
 const googleClientId = process.env.GOOGLE_CLIENT_ID;
 const googleClientSecret = process.env.GOOGLE_CLIENT_SECRET;
@@ -22,20 +23,40 @@ if (
     !opsUsername ||
     !opsPassword)
 ) {
-  throw new Error(
-    "Production requires database, auth, and ops credentials.",
-  );
+  throw new Error("Production requires database, auth, and ops credentials.");
 }
 
 const globalAuth = globalThis as typeof globalThis & {
   dorakAuthPool?: Pool;
 };
 
+/**
+ * Neon's pooled endpoint rejects startup `options`. Better Auth uses an
+ * unqualified table adapter, so it needs the identity schema on the session
+ * connection's search path. Prefer an explicitly supplied auth URL and, for
+ * Neon URLs, derive the direct endpoint from the pooled URL.
+ */
+function getAuthDatabaseUrl(url: string | undefined): string | undefined {
+  const configuredUrl = process.env.BETTER_AUTH_DATABASE_URL;
+  if (configuredUrl) return configuredUrl;
+  if (!url) return undefined;
+
+  try {
+    const parsed = new URL(url);
+    if (parsed.hostname.includes("-pooler.")) {
+      parsed.hostname = parsed.hostname.replace("-pooler.", ".");
+    }
+    return parsed.toString();
+  } catch {
+    return url;
+  }
+}
+
 function getAuthPool(): Pool | undefined {
-  if (!databaseUrl) return undefined;
+  if (!authDatabaseUrl) return undefined;
   if (!globalAuth.dorakAuthPool) {
     globalAuth.dorakAuthPool = new Pool({
-      connectionString: databaseUrl,
+      connectionString: authDatabaseUrl,
       max: process.env.VERCEL ? 1 : 3,
       idleTimeoutMillis: 20_000,
       connectionTimeoutMillis: 10_000,
