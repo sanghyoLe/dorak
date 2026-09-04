@@ -42,7 +42,7 @@ describeWithDatabase("PostgresCatalog integration", () => {
   });
 
   it("groups active branches by district and neighborhood", async () => {
-    const locations = await catalog.listLocations({ approvedOnly: true });
+    const locations = await catalog.listLocations();
     const branchCount = locations.reduce(
       (total, location) => total + location.count,
       0,
