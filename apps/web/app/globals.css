@@ -254,7 +254,9 @@ button:disabled {
 .breadcrumb {
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
   gap: var(--space-2xs);
+  row-gap: var(--space-3xs);
   min-height: 2.75rem;
   color: var(--color-ink-soft);
   font-size: var(--text-xs);

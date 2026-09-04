@@ -70,9 +70,19 @@ export default async function BranchPage({ params }: BranchPageProps) {
 
       <main id="main-content" className="page-shell branch-page">
         <nav className="breadcrumb" aria-label="현재 위치">
-          <Link href="/">홈</Link>
+          <Link href="/">도락</Link>
           <span aria-hidden="true">›</span>
-          <Link href="/">서울 식당</Link>
+          <Link href="/r">서울 식당</Link>
+          <span aria-hidden="true">›</span>
+          <Link href={`/r/${encodeURIComponent(branch.district)}`}>
+            {branch.district}
+          </Link>
+          <span aria-hidden="true">›</span>
+          <Link
+            href={`/r/${encodeURIComponent(branch.district)}/${branch.cuisine}`}
+          >
+            {branch.cuisineLabel}
+          </Link>
           <span aria-hidden="true">›</span>
           <span>{branch.name}</span>
         </nav>
@@ -114,41 +124,6 @@ export default async function BranchPage({ params }: BranchPageProps) {
               <dd>{branch.priceBand}</dd>
             </div>
           </dl>
-        </section>
-
-        <section className="branch-location" aria-labelledby="location-title">
-          <header>
-            <h2 id="location-title">찾아가기</h2>
-          </header>
-          <KakaoMap
-            name={branch.name}
-            address={branch.address}
-            latitude={branch.latitude ?? null}
-            longitude={branch.longitude ?? null}
-            isSynthetic={branch.provenance === "synthetic"}
-          />
-          {branch.sourceName ? (
-            <p className="branch-location__source">
-              위치·주소 출처:{" "}
-              {branch.provenance === "approved_source" ? (
-                <a
-                  href="https://data.seoul.go.kr/dataList/OA-16094/A/1/datasetView.do"
-                  target="_blank"
-                  rel="noreferrer"
-                >
-                  {branch.sourceName}
-                </a>
-              ) : (
-                branch.sourceName
-              )}
-              {branch.lastVerifiedAt
-                ? ` · ${new Intl.DateTimeFormat("ko-KR", {
-                    dateStyle: "medium",
-                    timeZone: "Asia/Seoul",
-                  }).format(new Date(branch.lastVerifiedAt))} 기준`
-                : null}
-            </p>
-          ) : null}
         </section>
 
         <nav className="branch-section-nav" aria-label="상세 정보 바로가기">
@@ -400,6 +375,41 @@ export default async function BranchPage({ params }: BranchPageProps) {
             </dl>
           </aside>
         </div>
+
+        <section className="branch-location" aria-labelledby="location-title">
+          <header>
+            <h2 id="location-title">찾아가기</h2>
+          </header>
+          <KakaoMap
+            name={branch.name}
+            address={branch.address}
+            latitude={branch.latitude ?? null}
+            longitude={branch.longitude ?? null}
+            isSynthetic={branch.provenance === "synthetic"}
+          />
+          {branch.sourceName ? (
+            <p className="branch-location__source">
+              위치·주소 출처:{" "}
+              {branch.provenance === "approved_source" ? (
+                <a
+                  href="https://data.seoul.go.kr/dataList/OA-16094/A/1/datasetView.do"
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  {branch.sourceName}
+                </a>
+              ) : (
+                branch.sourceName
+              )}
+              {branch.lastVerifiedAt
+                ? ` · ${new Intl.DateTimeFormat("ko-KR", {
+                    dateStyle: "medium",
+                    timeZone: "Asia/Seoul",
+                  }).format(new Date(branch.lastVerifiedAt))} 기준`
+                : null}
+            </p>
+          ) : null}
+        </section>
 
         <Link className="back-to-results" href="/">
           <ChevronLeft aria-hidden="true" size={18} strokeWidth={2} />
