@@ -451,8 +451,9 @@ button:disabled {
 .location-field span {
   min-width: 0;
   flex: 1 1 auto;
-  display: flex;
-  align-items: baseline;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
   gap: var(--space-2xs);
   font-weight: 700;
   white-space: nowrap;
@@ -467,11 +468,15 @@ button:disabled {
 
 .location-field select {
   min-width: 0;
+  width: 100%;
   max-width: 100%;
+  overflow: hidden;
   border: 0;
   outline: 0;
   background: var(--color-surface);
   color: var(--color-ink);
+  text-overflow: ellipsis;
+  white-space: nowrap;
   font-weight: 700;
 }
 
@@ -2063,7 +2068,7 @@ button:disabled {
   }
 
   .search-panel {
-    grid-template-columns: 10rem minmax(0, 1fr) auto;
+    grid-template-columns: 12rem minmax(0, 1fr) auto;
   }
 
   .location-field {
