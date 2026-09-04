@@ -33,6 +33,7 @@ export default async function HomePage() {
           branches={branches}
           locations={locations}
           totalCount={initialResult.meta.total}
+          dataMode={catalog.mode}
         />
       </main>
 

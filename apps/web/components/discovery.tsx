@@ -4,9 +4,17 @@ import type {
   BranchSort,
   BranchLocationGroup,
   BranchSummary,
+  CatalogMode,
   CuisineKey,
 } from "@dorak/domain-types";
-import { Bookmark, Check, ChevronDown, MapPin, Search } from "lucide-react";
+import {
+  ArrowUpRight,
+  Bookmark,
+  Check,
+  ChevronDown,
+  MapPin,
+  Search,
+} from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import type { FormEvent } from "react";
@@ -72,6 +80,7 @@ export function Discovery({
   branches,
   locations,
   totalCount,
+  dataMode,
   mode = "home",
   initialQuery = "",
   initialCuisine = "all",
@@ -85,6 +94,7 @@ export function Discovery({
   branches: BranchSummary[];
   locations: BranchLocationGroup[];
   totalCount?: number;
+  dataMode?: CatalogMode;
   mode?: "home" | "results";
   initialQuery?: string;
   initialCuisine?: (typeof CUISINES)[number]["key"];
@@ -449,21 +459,53 @@ export function Discovery({
     <>
       {mode === "home" ? (
         <section className="home-portal" aria-labelledby="home-title">
-          <BranchSearchForm
-            className="home-search"
-            draftQuery={draftQuery}
-            searchState={searchState}
-            locations={locations}
-            selectedDistrict={initialDistrict}
-            onDistrict={chooseDistrict}
-            onChange={setDraftQuery}
-            onSubmit={submitSearch}
-          />
+          <header className="home-index__masthead">
+            <div className="home-index__eyebrow">
+              <span>SEOUL / INDEX 01</span>
+              <span className="home-index__source">
+                <i aria-hidden="true" />
+                {dataMode === "postgres"
+                  ? "서울시 일반음식점 원장"
+                  : "합성 데이터 프리뷰"}
+              </span>
+            </div>
+            <div className="home-index__heading-row">
+              <div className="home-index__heading">
+                <h1 id="home-title">
+                  서울 식당을
+                  <br />
+                  <span>지점으로 읽습니다.</span>
+                </h1>
+                <p>
+                  상호보다 정확한 주소와 동네를 먼저 기록합니다.
+                  <br />
+                  오늘 갈 곳을 지역과 음식에서 펼쳐보세요.
+                </p>
+              </div>
+              <div className="home-index__count" aria-label="서울 식당 지점 수">
+                <strong>
+                  {(totalCount ?? resultTotal).toLocaleString("ko-KR")}
+                </strong>
+                <span>서울 식당 지점</span>
+              </div>
+            </div>
+          </header>
 
-          <div className="home-portal__intro">
-            <h1 id="home-title">
-              서울 식당 {resultTotal.toLocaleString("ko-KR")}곳
-            </h1>
+          <div className="home-index__finder">
+            <div className="home-index__finder-label">
+              <span>FIND / 01</span>
+              <p>찾고 싶은 단서를 남겨주세요.</p>
+            </div>
+            <BranchSearchForm
+              className="home-search"
+              draftQuery={draftQuery}
+              searchState={searchState}
+              locations={locations}
+              selectedDistrict={initialDistrict}
+              onDistrict={chooseDistrict}
+              onChange={setDraftQuery}
+              onSubmit={submitSearch}
+            />
           </div>
 
           <div className="portal-rails">
@@ -472,7 +514,7 @@ export function Discovery({
               aria-labelledby="popular-location-title"
             >
               <div className="portal-rail__heading">
-                <h2 id="popular-location-title">인기 지역</h2>
+                <h2 id="popular-location-title">지역별로 보기</h2>
                 <span>{locations.length.toLocaleString("ko-KR")}개 지역</span>
               </div>
               <div className="portal-link-grid">
@@ -495,8 +537,8 @@ export function Discovery({
               aria-labelledby="popular-cuisine-title"
             >
               <div className="portal-rail__heading">
-                <h2 id="popular-cuisine-title">음식 장르</h2>
-                <span>서울 전체</span>
+                <h2 id="popular-cuisine-title">음식별로 보기</h2>
+                <span>6개 장르</span>
               </div>
               <div className="portal-link-grid portal-link-grid--cuisine">
                 {CUISINES.filter((item) => item.key !== "all").map((item) => (
@@ -512,6 +554,56 @@ export function Discovery({
               </div>
             </section>
           </div>
+
+          {branches.length > 0 ? (
+            <section
+              className="home-index__preview"
+              aria-labelledby="home-preview-title"
+            >
+              <div className="home-index__preview-heading">
+                <div>
+                  <span>INDEX / 01—06</span>
+                  <h2 id="home-preview-title">
+                    서울 전체 목록에서
+                    <br />
+                    먼저 펼쳐보기
+                  </h2>
+                </div>
+                <Link href="/r">
+                  전체 목록
+                  <ArrowUpRight aria-hidden="true" size={16} strokeWidth={2} />
+                </Link>
+              </div>
+              <ol className="home-index__preview-list">
+                {branches.slice(0, 6).map((branch, index) => (
+                  <li key={branch.publicId}>
+                    <Link href={`/restaurants/${branch.publicId}`}>
+                      <span className="home-index__preview-number">
+                        {String(index + 1).padStart(2, "0")}
+                      </span>
+                      <span className="home-index__preview-name">
+                        <strong>{branch.name}</strong>
+                        <small>
+                          {branch.district} · {branch.neighborhood} ·{" "}
+                          {branch.cuisineLabel}
+                        </small>
+                      </span>
+                      <span className="home-index__preview-meta">
+                        {branch.rating !== null
+                          ? branch.rating.toFixed(1)
+                          : branch.priceBand}
+                        <ArrowUpRight
+                          aria-hidden="true"
+                          size={16}
+                          strokeWidth={2}
+                        />
+                      </span>
+                    </Link>
+                  </li>
+                ))}
+              </ol>
+            </section>
+          ) : null}
         </section>
       ) : null}
 
