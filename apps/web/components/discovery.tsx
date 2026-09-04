@@ -1,10 +1,21 @@
 "use client";
 
-import type { BranchSummary, CuisineKey } from "@dorak/domain-types";
+import type {
+  BranchLocationGroup,
+  BranchSummary,
+  CuisineKey,
+} from "@dorak/domain-types";
 import { Bookmark, Check, ChevronDown, MapPin, Search } from "lucide-react";
 import Link from "next/link";
 import type { FormEvent } from "react";
-import { useEffect, useId, useMemo, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useId,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 
 const CUISINES: readonly { key: "all" | CuisineKey; label: string }[] = [
   { key: "all", label: "전체 음식" },
@@ -19,12 +30,7 @@ const CUISINES: readonly { key: "all" | CuisineKey; label: string }[] = [
 type SearchState = "idle" | "loading" | "success" | "error";
 type SortKey = "default" | "rating" | "reviews";
 const SAVED_STORAGE_KEY = "dorak:saved-branches:v1";
-
-type LocationGroup = Readonly<{
-  district: string;
-  count: number;
-  neighborhoods: ReadonlyArray<Readonly<{ name: string; count: number }>>;
-}>;
+const PAGE_SIZE = 60;
 
 function normalise(value: string): string {
   return value.normalize("NFKC").toLocaleLowerCase("ko-KR");
@@ -39,8 +45,13 @@ function compactRestaurantName(value: string): string {
 
 export function Discovery({
   branches,
+  locations,
   totalCount,
-}: Readonly<{ branches: BranchSummary[]; totalCount?: number }>) {
+}: Readonly<{
+  branches: BranchSummary[];
+  locations: BranchLocationGroup[];
+  totalCount?: number;
+}>) {
   const [draftQuery, setDraftQuery] = useState("");
   const [query, setQuery] = useState("");
   const [cuisine, setCuisine] =
@@ -51,6 +62,14 @@ export function Discovery({
   const [sort, setSort] = useState<SortKey>("default");
   const [loadedBranches, setLoadedBranches] = useState(branches);
   const [resultTotal, setResultTotal] = useState(totalCount ?? branches.length);
+  const [hasMore, setHasMore] = useState(
+    (totalCount ?? branches.length) > branches.length,
+  );
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const loadMoreSentinelRef = useRef<HTMLDivElement>(null);
+  const loadingMoreRef = useRef(false);
+  const loadControllerRef = useRef<AbortController | null>(null);
 
   useEffect(() => {
     try {
@@ -96,18 +115,26 @@ export function Discovery({
   useEffect(() => {
     if (!query && cuisine === "all") {
       setLoadedBranches(branches);
-      setResultTotal(totalCount ?? branches.length);
+      const nextTotal = totalCount ?? branches.length;
+      setResultTotal(nextTotal);
+      setHasMore(nextTotal > branches.length);
+      setLoadError(null);
       return;
     }
 
     const controller = new AbortController();
     const params = new URLSearchParams({
       q: query,
-      limit: "200",
+      limit: String(PAGE_SIZE),
+      offset: "0",
     });
     if (cuisine !== "all") params.set("cuisine", cuisine);
 
     setSearchState("loading");
+    loadControllerRef.current?.abort();
+    loadingMoreRef.current = false;
+    setLoadingMore(false);
+    setLoadError(null);
     fetch(`/api/v1/branches?${params.toString()}`, {
       signal: controller.signal,
     })
@@ -120,7 +147,9 @@ export function Discovery({
       })
       .then((payload) => {
         setLoadedBranches(payload.data);
-        setResultTotal(payload.meta?.total ?? payload.data.length);
+        const nextTotal = payload.meta?.total ?? payload.data.length;
+        setResultTotal(nextTotal);
+        setHasMore(payload.data.length < nextTotal);
         setSearchState("success");
       })
       .catch((error: unknown) => {
@@ -129,8 +158,79 @@ export function Discovery({
         setSearchState("error");
       });
 
-    return () => controller.abort();
+    return () => {
+      controller.abort();
+      loadControllerRef.current?.abort();
+    };
   }, [branches, cuisine, query, totalCount]);
+
+  const loadNextPage = useCallback(async () => {
+    if (loadingMoreRef.current || !hasMore) return;
+
+    loadingMoreRef.current = true;
+    setLoadingMore(true);
+    setLoadError(null);
+    const offset = loadedBranches.length;
+    const params = new URLSearchParams({
+      q: query,
+      limit: String(PAGE_SIZE),
+      offset: String(offset),
+    });
+    if (cuisine !== "all") params.set("cuisine", cuisine);
+    const controller = new AbortController();
+    loadControllerRef.current = controller;
+
+    try {
+      const response = await fetch(`/api/v1/branches?${params.toString()}`, {
+        signal: controller.signal,
+      });
+      if (!response.ok) throw new Error("추가 식당을 불러오지 못했습니다.");
+      const payload = (await response.json()) as {
+        data: BranchSummary[];
+        meta?: { total?: number };
+      };
+      const nextTotal = payload.meta?.total ?? offset + payload.data.length;
+      setLoadedBranches((current) => {
+        const seen = new Set(current.map((branch) => branch.publicId));
+        return [
+          ...current,
+          ...payload.data.filter((branch) => !seen.has(branch.publicId)),
+        ];
+      });
+      setResultTotal(nextTotal);
+      setHasMore(
+        payload.data.length > 0 && offset + payload.data.length < nextTotal,
+      );
+    } catch (error: unknown) {
+      if (error instanceof DOMException && error.name === "AbortError") {
+        return;
+      }
+      setLoadError("추가 식당을 불러오지 못했습니다.");
+    } finally {
+      if (loadControllerRef.current === controller) {
+        loadControllerRef.current = null;
+        loadingMoreRef.current = false;
+        setLoadingMore(false);
+      }
+    }
+  }, [cuisine, hasMore, loadedBranches.length, query]);
+
+  useEffect(() => {
+    const sentinel = loadMoreSentinelRef.current;
+    if (!sentinel || !hasMore) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries.some((entry) => entry.isIntersecting)) {
+          void loadNextPage();
+        }
+      },
+      { rootMargin: "640px 0px" },
+    );
+    observer.observe(sentinel);
+
+    return () => observer.disconnect();
+  }, [hasMore, loadNextPage]);
 
   const filtered = useMemo(() => {
     const needle = normalise(query);
@@ -166,38 +266,6 @@ export function Discovery({
     }
     return matches;
   }, [cuisine, loadedBranches, query, sort]);
-
-  const locations = useMemo(() => {
-    const groups = new Map<
-      string,
-      { count: number; neighborhoods: Map<string, number> }
-    >();
-
-    for (const branch of loadedBranches) {
-      const group = groups.get(branch.district) ?? {
-        count: 0,
-        neighborhoods: new Map<string, number>(),
-      };
-      group.count += 1;
-      group.neighborhoods.set(
-        branch.neighborhood,
-        (group.neighborhoods.get(branch.neighborhood) ?? 0) + 1,
-      );
-      groups.set(branch.district, group);
-    }
-
-    return [...groups.entries()]
-      .map(([district, group]): LocationGroup => ({
-        district,
-        count: group.count,
-        neighborhoods: [...group.neighborhoods.entries()]
-          .map(([name, count]) => ({ name, count }))
-          .sort((left, right) => left.name.localeCompare(right.name, "ko-KR")),
-      }))
-      .sort((left, right) =>
-        left.district.localeCompare(right.district, "ko-KR"),
-      );
-  }, [loadedBranches]);
 
   function submitSearch(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -455,6 +523,37 @@ export function Discovery({
               </button>
             </div>
           )}
+
+          {filtered.length > 0 ? (
+            <div
+              ref={loadMoreSentinelRef}
+              className="load-more-status"
+              aria-live="polite"
+              aria-busy={loadingMore}
+            >
+              {loadingMore ? (
+                <p>다음 식당을 불러오는 중…</p>
+              ) : loadError ? (
+                <>
+                  <p>{loadError}</p>
+                  <button type="button" onClick={() => void loadNextPage()}>
+                    다시 불러오기
+                  </button>
+                </>
+              ) : hasMore ? (
+                <>
+                  <p>스크롤하면 다음 식당을 계속 보여드립니다.</p>
+                  <button type="button" onClick={() => void loadNextPage()}>
+                    다음 {PAGE_SIZE}곳 보기
+                  </button>
+                </>
+              ) : (
+                <p>
+                  전체 {resultTotal.toLocaleString("ko-KR")}곳을 확인했습니다.
+                </p>
+              )}
+            </div>
+          ) : null}
         </div>
       </div>
     </section>
@@ -470,7 +569,7 @@ function FilterControls({
   onClear,
 }: Readonly<{
   cuisine: (typeof CUISINES)[number]["key"];
-  locations: ReadonlyArray<LocationGroup>;
+  locations: ReadonlyArray<BranchLocationGroup>;
   query: string;
   onCuisine: (value: (typeof CUISINES)[number]["key"]) => void;
   onNeighborhood: (value: string) => void;

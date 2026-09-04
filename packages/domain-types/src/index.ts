@@ -48,6 +48,15 @@ export interface BranchSearchResponse {
   };
 }
 
+export interface BranchLocationGroup {
+  district: string;
+  count: number;
+  neighborhoods: Array<{
+    name: string;
+    count: number;
+  }>;
+}
+
 export type CandidateStatus = "pending" | "approved" | "rejected";
 
 export interface IngestionCandidate {

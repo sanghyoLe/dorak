@@ -1,4 +1,5 @@
 import type {
+  BranchLocationGroup,
   BranchSearchResponse,
   BranchSummary,
   CandidateStatus,
@@ -82,6 +83,40 @@ export class InMemoryCatalog {
         dataMode: "memory",
       },
     };
+  }
+
+  listLocations(
+    options: Readonly<{ approvedOnly?: boolean }> = {},
+  ): BranchLocationGroup[] {
+    const groups = new Map<string, Map<string, number>>();
+
+    for (const branch of this.#branches) {
+      if (options.approvedOnly && branch.provenance !== "approved_source") {
+        continue;
+      }
+
+      const neighborhoods = groups.get(branch.district) ?? new Map();
+      neighborhoods.set(
+        branch.neighborhood,
+        (neighborhoods.get(branch.neighborhood) ?? 0) + 1,
+      );
+      groups.set(branch.district, neighborhoods);
+    }
+
+    return [...groups.entries()]
+      .map(([district, neighborhoods]): BranchLocationGroup => ({
+        district,
+        count: [...neighborhoods.values()].reduce(
+          (total, count) => total + count,
+          0,
+        ),
+        neighborhoods: [...neighborhoods.entries()]
+          .map(([name, count]) => ({ name, count }))
+          .sort((left, right) => left.name.localeCompare(right.name, "ko-KR")),
+      }))
+      .sort((left, right) =>
+        left.district.localeCompare(right.district, "ko-KR"),
+      );
   }
 
   findBranch(publicId: string): BranchSummary | undefined {

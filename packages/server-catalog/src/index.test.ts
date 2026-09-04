@@ -28,6 +28,22 @@ describe("InMemoryCatalog", () => {
     expect(catalog.searchBranches("", "cafe").data).toHaveLength(1);
   });
 
+  it("groups all branches by district and neighborhood", () => {
+    const catalog = new InMemoryCatalog();
+    const locations = catalog.listLocations();
+
+    expect(locations).toHaveLength(5);
+    expect(
+      locations.find((location) => location.district === "마포구"),
+    ).toMatchObject({
+      count: 2,
+      neighborhoods: [
+        { name: "망원동", count: 1 },
+        { name: "연남동", count: 1 },
+      ],
+    });
+  });
+
   it("applies a candidate review once", () => {
     const catalog = new InMemoryCatalog();
     const candidate = catalog.listCandidates()[0];

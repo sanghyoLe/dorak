@@ -38,10 +38,12 @@ export async function GET(request: Request) {
   }
 
   try {
+    const catalog = getCatalog();
     return Response.json(
-      await getCatalog().searchBranches(query, cuisine ?? undefined, {
+      await catalog.searchBranches(query, cuisine ?? undefined, {
         limit: requestedLimit,
         offset: requestedOffset,
+        approvedOnly: catalog.mode === "postgres",
       }),
     );
   } catch (error) {

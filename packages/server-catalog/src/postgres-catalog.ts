@@ -1,5 +1,6 @@
 import { createDatabase } from "@dorak/db";
 import type {
+  BranchLocationGroup,
   BranchSearchResponse,
   BranchSummary,
   CandidateStatus,
@@ -41,6 +42,12 @@ interface BranchRow {
   longitude: number | null;
   sourceName: string | null;
   lastVerifiedAt: Date | string | null;
+}
+
+interface LocationRow {
+  district: string;
+  neighborhood: string;
+  count: number;
 }
 
 interface CandidateRow {
@@ -360,6 +367,39 @@ export class PostgresCatalog {
         dataMode: "postgres",
       },
     };
+  }
+
+  async listLocations(
+    options: Readonly<{ approvedOnly?: boolean }> = {},
+  ): Promise<BranchLocationGroup[]> {
+    const rows = await this.#database.raw<LocationRow[]>`
+      SELECT
+        branch.district,
+        branch.neighborhood,
+        count(*)::int AS count
+      FROM catalog.branches AS branch
+      WHERE branch.status = 'active'
+        AND (
+          ${options.approvedOnly ?? false} = false
+          OR branch.provenance = 'approved_source'
+        )
+      GROUP BY branch.district, branch.neighborhood
+      ORDER BY branch.district, branch.neighborhood
+    `;
+    const groups = new Map<string, BranchLocationGroup>();
+
+    for (const row of rows) {
+      const group = groups.get(row.district) ?? {
+        district: row.district,
+        count: 0,
+        neighborhoods: [],
+      };
+      group.count += row.count;
+      group.neighborhoods.push({ name: row.neighborhood, count: row.count });
+      groups.set(row.district, group);
+    }
+
+    return [...groups.values()];
   }
 
   async findBranch(publicId: string): Promise<BranchSummary | undefined> {

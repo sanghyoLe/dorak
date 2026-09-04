@@ -8,10 +8,15 @@ import { getCatalog } from "../server/catalog";
 export const dynamic = "force-dynamic";
 
 export default async function HomePage() {
-  const initialResult = await getCatalog().searchBranches("", undefined, {
-    limit: 60,
-    approvedOnly: true,
-  });
+  const catalog = getCatalog();
+  const approvedOnly = catalog.mode === "postgres";
+  const [initialResult, locations] = await Promise.all([
+    catalog.searchBranches("", undefined, {
+      limit: 60,
+      approvedOnly,
+    }),
+    catalog.listLocations({ approvedOnly }),
+  ]);
   const loadedBranches = initialResult.data;
   const hasApprovedSource = loadedBranches.some(
     (branch) => branch.provenance === "approved_source",
@@ -31,7 +36,11 @@ export default async function HomePage() {
           <span>서울 음식점</span>
         </nav>
 
-        <Discovery branches={branches} totalCount={initialResult.meta.total} />
+        <Discovery
+          branches={branches}
+          locations={locations}
+          totalCount={initialResult.meta.total}
+        />
       </main>
 
       <SiteFooter

@@ -621,6 +621,8 @@ button:disabled {
   min-width: 0;
   display: grid;
   grid-template-columns: 6.5rem minmax(0, 1fr);
+  content-visibility: auto;
+  contain-intrinsic-size: 12rem;
   border-inline: var(--rule-hair) solid var(--color-rule-strong);
   border-block-end: var(--rule-hair) solid var(--color-rule-strong);
   background: var(--color-surface);
@@ -852,6 +854,41 @@ button:disabled {
   text-decoration: underline;
   text-decoration-thickness: var(--rule-hair);
   text-underline-offset: var(--space-3xs);
+}
+
+.load-more-status {
+  display: grid;
+  justify-items: center;
+  gap: var(--space-2xs);
+  min-height: 4rem;
+  padding-block: var(--space-md);
+  color: var(--color-ink-soft);
+  font-size: var(--text-sm);
+  text-align: center;
+}
+
+.load-more-status p {
+  margin: 0;
+}
+
+.load-more-status button {
+  min-height: 2.75rem;
+  padding-inline: var(--space-sm);
+  border: var(--rule-hair) solid var(--color-rule-strong);
+  background: var(--color-surface);
+  color: var(--color-ink);
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.load-more-status button:hover {
+  border-color: var(--color-clay);
+  color: var(--color-clay-deep);
+}
+
+.load-more-status button:disabled {
+  background: var(--color-sunken);
+  cursor: not-allowed;
 }
 
 .branch-page {

@@ -41,6 +41,17 @@ describeWithDatabase("PostgresCatalog integration", () => {
     expect(result.data.map((branch) => branch.name)).toContain("골목 제면소");
   });
 
+  it("groups active branches by district and neighborhood", async () => {
+    const locations = await catalog.listLocations({ approvedOnly: true });
+    const branchCount = locations.reduce(
+      (total, location) => total + location.count,
+      0,
+    );
+
+    expect(locations.length).toBeGreaterThan(0);
+    expect(branchCount).toBeGreaterThan(0);
+  });
+
   it("uses trigram similarity for a misspelled restaurant name", async () => {
     const result = await catalog.searchBranches("골목 제면쇼");
 
