@@ -8,8 +8,7 @@ export const metadata = {
   description: "도락 MVP가 수집하고 이용하는 정보에 대한 안내",
 };
 
-const contactEmail =
-  process.env.DORAK_CONTACT_EMAIL ?? "contact@example.invalid";
+const contactEmail = process.env.DORAK_CONTACT_EMAIL;
 
 export default function PrivacyPage() {
   return (
@@ -61,9 +60,13 @@ export default function PrivacyPage() {
             연락할 수 있습니다. 정식 공개 전에는 실제 연락 가능한 이메일로 아래
             주소를 반드시 교체합니다.
           </p>
-          <p>
-            <a href={`mailto:${contactEmail}`}>{contactEmail}</a>
-          </p>
+          {contactEmail ? (
+            <p>
+              <a href={`mailto:${contactEmail}`}>{contactEmail}</a>
+            </p>
+          ) : (
+            <p>운영자 연락처는 공개 준비 중입니다.</p>
+          )}
         </section>
 
         <Link className="back-to-results" href="/">

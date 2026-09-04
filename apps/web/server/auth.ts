@@ -7,24 +7,23 @@ const databaseUrl = process.env.DATABASE_URL;
 const authSecret = process.env.BETTER_AUTH_SECRET;
 const googleClientId = process.env.GOOGLE_CLIENT_ID;
 const googleClientSecret = process.env.GOOGLE_CLIENT_SECRET;
-const contactEmail = process.env.DORAK_CONTACT_EMAIL;
 const opsUsername = process.env.DORAK_OPS_USERNAME;
 const opsPassword = process.env.DORAK_OPS_PASSWORD;
 const productionDeployment = process.env.VERCEL_ENV === "production";
+export const googleSignInEnabled = Boolean(
+  googleClientId && googleClientSecret,
+);
 
 if (
   productionDeployment &&
   (!databaseUrl ||
     !authSecret ||
     !process.env.BETTER_AUTH_URL ||
-    !googleClientId ||
-    !googleClientSecret ||
-    !contactEmail ||
     !opsUsername ||
     !opsPassword)
 ) {
   throw new Error(
-    "Production requires database, auth, Google OAuth, contact email, and ops credentials.",
+    "Production requires database, auth, and ops credentials.",
   );
 }
 
@@ -45,10 +44,6 @@ function getAuthPool(): Pool | undefined {
   }
   return globalAuth.dorakAuthPool;
 }
-
-export const googleSignInEnabled = Boolean(
-  googleClientId && googleClientSecret,
-);
 
 const baseURL =
   process.env.BETTER_AUTH_URL ??
