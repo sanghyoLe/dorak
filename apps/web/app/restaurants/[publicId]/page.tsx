@@ -5,6 +5,7 @@ import { notFound } from "next/navigation";
 
 import { ReviewForm } from "../../../components/review-form";
 import { KakaoMap } from "../../../components/kakao-map";
+import { SavedBranchButton } from "../../../components/saved-branch-button";
 import { SiteFooter } from "../../../components/site-footer";
 import { SiteHeader } from "../../../components/site-header";
 import { findBranch, listBranchReviews } from "../../../server/catalog";
@@ -92,6 +93,9 @@ export default async function BranchPage({ params }: BranchPageProps) {
             {branch.neighborhood} · {branch.district} / {branch.cuisineLabel}
           </p>
           <h1>{branch.name}</h1>
+          <div className="branch-heading__actions">
+            <SavedBranchButton publicId={branch.publicId} />
+          </div>
           <div className="branch-heading__status" aria-label="정보 상태">
             <span data-state="attention">영업 정보 확인 전</span>
             {branch.provenance === "synthetic" ? (

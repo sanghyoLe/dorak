@@ -32,6 +32,7 @@ export class InMemoryCatalog {
     SYNTHETIC_CANDIDATES.map((candidate) => [candidate.id, { ...candidate }]),
   );
   readonly #reviews: StoredReview[];
+  readonly #savedBranches = new Map<string, Set<string>>();
 
   constructor() {
     this.#branches = SYNTHETIC_BRANCHES.map((branch) => ({ ...branch }));
@@ -157,6 +158,42 @@ export class InMemoryCatalog {
 
   findBranch(publicId: string): BranchSummary | undefined {
     return this.#branches.find((branch) => branch.publicId === publicId);
+  }
+
+  listSavedBranches(userId: string): BranchSummary[] {
+    const saved = this.#savedBranches.get(userId);
+    if (!saved) return [];
+
+    return [...saved]
+      .map((publicId) => this.findBranch(publicId))
+      .filter((branch): branch is BranchSummary => branch !== undefined);
+  }
+
+  saveBranch(userId: string, publicId: string): BranchSummary | undefined {
+    const branch = this.findBranch(publicId);
+    if (!branch) return undefined;
+
+    const saved = this.#savedBranches.get(userId) ?? new Set<string>();
+    saved.add(publicId);
+    this.#savedBranches.set(userId, saved);
+    return branch;
+  }
+
+  removeSavedBranch(userId: string, publicId: string): void {
+    const saved = this.#savedBranches.get(userId);
+    if (!saved) return;
+
+    saved.delete(publicId);
+    if (saved.size === 0) this.#savedBranches.delete(userId);
+  }
+
+  mergeSavedBranches(userId: string, publicIds: string[]): BranchSummary[] {
+    const saved = this.#savedBranches.get(userId) ?? new Set<string>();
+    for (const publicId of publicIds) {
+      if (this.findBranch(publicId)) saved.add(publicId);
+    }
+    if (saved.size > 0) this.#savedBranches.set(userId, saved);
+    return this.listSavedBranches(userId);
   }
 
   listCandidates(status: CandidateStatus = "pending"): IngestionCandidate[] {

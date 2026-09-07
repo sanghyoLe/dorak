@@ -26,6 +26,9 @@ describeWithDatabase("PostgresCatalog integration", () => {
 
   afterAll(async () => {
     await database.raw`
+      DELETE FROM community.saved_branches WHERE user_id = ${reviewerId}::uuid
+    `;
+    await database.raw`
       DELETE FROM community.reviews WHERE reviewer_user_id = ${reviewerId}::uuid
     `;
     await database.raw`
@@ -65,6 +68,23 @@ describeWithDatabase("PostgresCatalog integration", () => {
     expect(candidates[0]?.createdAt).toMatch(
       /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/,
     );
+  });
+
+  it("persists saved branches per account", async () => {
+    const branchPublicId = "br_L3nF8wQ2cV6jH9pB4sYk";
+
+    expect(await catalog.saveBranch(reviewerId, branchPublicId)).toMatchObject({
+      publicId: branchPublicId,
+    });
+    expect(
+      (await catalog.listSavedBranches(reviewerId)).map(
+        (branch) => branch.publicId,
+      ),
+    ).toContain(branchPublicId);
+
+    await catalog.mergeSavedBranches(reviewerId, [branchPublicId]);
+    await catalog.removeSavedBranch(reviewerId, branchPublicId);
+    expect(await catalog.listSavedBranches(reviewerId)).toEqual([]);
   });
 
   it("publishes, aggregates, lists, and moderates a review", async () => {

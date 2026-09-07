@@ -20,6 +20,7 @@ describe("migration files", () => {
       "000007_branch_contact_fields.sql",
       "000008_branch_external_info.sql",
       "000009_branch_discovery_indexes.sql",
+      "000010_saved_branches.sql",
     ]);
     expect(
       migrations.every((migration) => migration.checksum.length === 64),

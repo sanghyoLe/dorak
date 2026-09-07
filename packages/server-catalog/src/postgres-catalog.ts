@@ -473,6 +473,89 @@ export class PostgresCatalog {
     return rows[0] ? mapBranch(rows[0]) : undefined;
   }
 
+  async listSavedBranches(userId: string): Promise<BranchSummary[]> {
+    const rows = await this.#database.raw<BranchRow[]>`
+      SELECT
+        branch.id::text,
+        branch.public_id AS "publicId",
+        branch.name,
+        branch.neighborhood,
+        branch.district,
+        branch.road_address AS address,
+        branch.phone,
+        branch.website_url AS "websiteUrl",
+        branch.opening_hours AS "openingHours",
+        branch.closed_days AS "closedDays",
+        branch.external_info_source AS "externalInfoSource",
+        branch.external_info_updated_at AS "externalInfoUpdatedAt",
+        branch.cuisine_key AS cuisine,
+        branch.short_description AS "shortDescription",
+        branch.signature_menu AS "signatureMenu",
+        branch.price_band::int AS "priceBand",
+        branch.rating::float8 AS rating,
+        branch.review_count::int AS "reviewCount",
+        branch.provenance,
+        ST_Y(branch.location::geometry)::float8 AS latitude,
+        ST_X(branch.location::geometry)::float8 AS longitude,
+        source.display_name AS "sourceName",
+        branch.last_verified_at AS "lastVerifiedAt"
+      FROM community.saved_branches AS saved
+      JOIN catalog.branches AS branch ON branch.id = saved.branch_id
+      LEFT JOIN ingestion.sources AS source
+        ON source.source_key = branch.source_key
+      WHERE saved.user_id = ${userId}::uuid
+        AND branch.status = 'active'
+      ORDER BY saved.created_at DESC, saved.branch_id
+    `;
+
+    return rows.map(mapBranch);
+  }
+
+  async saveBranch(
+    userId: string,
+    publicId: string,
+  ): Promise<BranchSummary | undefined> {
+    await this.#database.raw`
+      INSERT INTO community.saved_branches (user_id, branch_id)
+      SELECT ${userId}::uuid, branch.id
+      FROM catalog.branches AS branch
+      WHERE branch.public_id = ${publicId}
+        AND branch.status = 'active'
+      ON CONFLICT (user_id, branch_id) DO NOTHING
+    `;
+
+    return this.findBranch(publicId);
+  }
+
+  async removeSavedBranch(userId: string, publicId: string): Promise<void> {
+    await this.#database.raw`
+      DELETE FROM community.saved_branches AS saved
+      USING catalog.branches AS branch
+      WHERE saved.user_id = ${userId}::uuid
+        AND saved.branch_id = branch.id
+        AND branch.public_id = ${publicId}
+    `;
+  }
+
+  async mergeSavedBranches(
+    userId: string,
+    publicIds: string[],
+  ): Promise<BranchSummary[]> {
+    if (publicIds.length > 0) {
+      await this.#database.raw`
+        INSERT INTO community.saved_branches (user_id, branch_id)
+        SELECT ${userId}::uuid, branch.id
+        FROM unnest(${publicIds}::text[]) AS requested(public_id)
+        JOIN catalog.branches AS branch
+          ON branch.public_id = requested.public_id
+        WHERE branch.status = 'active'
+        ON CONFLICT (user_id, branch_id) DO NOTHING
+      `;
+    }
+
+    return this.listSavedBranches(userId);
+  }
+
   async listCandidates(
     status: CandidateStatus = "pending",
   ): Promise<IngestionCandidate[]> {

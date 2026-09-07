@@ -44,6 +44,24 @@ describe("InMemoryCatalog", () => {
     });
   });
 
+  it("saves, lists, merges, and removes branches per account", () => {
+    const catalog = new InMemoryCatalog();
+    const userId = "01991b38-6800-7000-9000-000000000999";
+    const first = "br_Zk8sD1mP4qR7vT2xN5cA";
+    const second = "br_L3nF8wQ2cV6jH9pB4sYk";
+
+    expect(catalog.listSavedBranches(userId)).toEqual([]);
+    expect(catalog.saveBranch(userId, first)?.publicId).toBe(first);
+    expect(
+      catalog.mergeSavedBranches(userId, [first, second, "missing"]),
+    ).toEqual([catalog.findBranch(first), catalog.findBranch(second)]);
+
+    catalog.removeSavedBranch(userId, first);
+    expect(
+      catalog.listSavedBranches(userId).map((branch) => branch.publicId),
+    ).toEqual([second]);
+  });
+
   it("applies a candidate review once", () => {
     const catalog = new InMemoryCatalog();
     const candidate = catalog.listCandidates()[0];

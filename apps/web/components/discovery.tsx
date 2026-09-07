@@ -17,7 +17,7 @@ import {
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import type { FormEvent } from "react";
-import { useEffect, useId, useMemo, useState } from "react";
+import { useEffect, useId, useMemo, useRef, useState } from "react";
 
 const CUISINES: readonly { key: "all" | CuisineKey; label: string }[] = [
   { key: "all", label: "전체 음식" },
@@ -33,6 +33,23 @@ type SearchState = "idle" | "loading" | "success" | "error";
 type SortKey = "default" | "rating" | "reviews";
 const SAVED_STORAGE_KEY = "dorak:saved-branches:v1";
 const PAGE_SIZE = 20;
+
+function readLocalSaved(): Set<string> {
+  try {
+    const stored = window.localStorage.getItem(SAVED_STORAGE_KEY);
+    const values = stored ? (JSON.parse(stored) as unknown) : [];
+    return new Set(
+      Array.isArray(values)
+        ? values.filter(
+            (value): value is string =>
+              typeof value === "string" && value.length > 0,
+          )
+        : [],
+    );
+  } catch {
+    return new Set();
+  }
+}
 
 function normalise(value: string): string {
   return value.normalize("NFKC").toLocaleLowerCase("ko-KR");
@@ -118,35 +135,83 @@ export function Discovery({
   );
   const [saved, setSaved] = useState<ReadonlySet<string>>(new Set());
   const [savedLoaded, setSavedLoaded] = useState(false);
+  const [savedSource, setSavedSource] = useState<
+    "loading" | "server" | "local"
+  >("loading");
+  const [savingIds, setSavingIds] = useState<ReadonlySet<string>>(new Set());
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const saveInteractionRef = useRef(false);
   const [searchState, setSearchState] = useState<SearchState>("idle");
   const [sort, setSort] = useState<SortKey>(initialSort);
   const [loadedBranches, setLoadedBranches] = useState(branches);
   const [resultTotal, setResultTotal] = useState(totalCount ?? branches.length);
 
   useEffect(() => {
-    try {
-      const stored = window.localStorage.getItem(SAVED_STORAGE_KEY);
-      const values = stored ? (JSON.parse(stored) as unknown) : [];
-      if (Array.isArray(values)) {
-        setSaved(
-          new Set(
-            values.filter(
-              (value): value is string => typeof value === "string",
-            ),
-          ),
+    let cancelled = false;
+    const localSaved = readLocalSaved();
+    setSaved(localSaved);
+
+    async function loadSavedState() {
+      try {
+        const response = await fetch("/api/v1/saved", { cache: "no-store" });
+        if (response.status === 401) {
+          if (!cancelled) {
+            setSavedSource("local");
+            setSavedLoaded(true);
+          }
+          return;
+        }
+        if (!response.ok) throw new Error("saved.list");
+
+        const payload = (await response.json()) as {
+          data?: Array<{ publicId: string }>;
+        };
+        if (saveInteractionRef.current) return;
+        let serverSaved = new Set(
+          (payload.data ?? []).map((branch) => branch.publicId),
         );
+
+        if (localSaved.size > 0) {
+          const mergeResponse = await fetch("/api/v1/saved", {
+            method: "POST",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify({ publicIds: [...localSaved] }),
+          });
+          if (mergeResponse.ok) {
+            const merged = (await mergeResponse.json()) as {
+              data?: Array<{ publicId: string }>;
+            };
+            serverSaved = new Set(
+              (merged.data ?? []).map((branch) => branch.publicId),
+            );
+            window.localStorage.removeItem(SAVED_STORAGE_KEY);
+          }
+        }
+
+        if (!cancelled) {
+          setSaved(serverSaved);
+          setSavedSource("server");
+          setSavedLoaded(true);
+        }
+      } catch {
+        if (!cancelled) {
+          setSaved(localSaved);
+          setSavedSource("local");
+          setSavedLoaded(true);
+        }
       }
-    } catch {
-      setSaved(new Set());
-    } finally {
-      setSavedLoaded(true);
     }
+
+    void loadSavedState();
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   useEffect(() => {
-    if (!savedLoaded) return;
+    if (!savedLoaded || savedSource !== "local") return;
     window.localStorage.setItem(SAVED_STORAGE_KEY, JSON.stringify([...saved]));
-  }, [saved, savedLoaded]);
+  }, [saved, savedLoaded, savedSource]);
 
   useEffect(() => {
     if (mode === "results") return;
@@ -443,13 +508,60 @@ export function Discovery({
     setSort(value);
   }
 
-  function toggleSaved(publicId: string) {
+  async function toggleSaved(publicId: string) {
+    if (savingIds.has(publicId)) return;
+
+    const nextSaved = !saved.has(publicId);
+    saveInteractionRef.current = true;
     setSaved((current) => {
       const next = new Set(current);
       if (next.has(publicId)) next.delete(publicId);
       else next.add(publicId);
       return next;
     });
+    setSaveError(null);
+
+    if (savedSource === "loading" || savedSource === "local") {
+      const next = readLocalSaved();
+      if (nextSaved) next.add(publicId);
+      else next.delete(publicId);
+      window.localStorage.setItem(SAVED_STORAGE_KEY, JSON.stringify([...next]));
+      setSavedSource("local");
+      return;
+    }
+
+    setSavingIds((current) => new Set(current).add(publicId));
+    try {
+      const response = await fetch(`/api/v1/branches/${publicId}/saved`, {
+        method: nextSaved ? "PUT" : "DELETE",
+      });
+      if (response.status === 401) {
+        const next = readLocalSaved();
+        if (nextSaved) next.add(publicId);
+        else next.delete(publicId);
+        window.localStorage.setItem(
+          SAVED_STORAGE_KEY,
+          JSON.stringify([...next]),
+        );
+        setSavedSource("local");
+        return;
+      }
+      if (!response.ok) throw new Error("saved.toggle");
+    } catch {
+      setSaved((current) => {
+        const next = new Set(current);
+        if (nextSaved) next.delete(publicId);
+        else next.add(publicId);
+        return next;
+      });
+      setSaveError("저장하지 못했습니다. 잠시 후 다시 시도해 주세요.");
+    } finally {
+      setSavingIds((current) => {
+        const next = new Set(current);
+        next.delete(publicId);
+        return next;
+      });
+    }
   }
 
   return (
@@ -646,6 +758,11 @@ export function Discovery({
                     </small>
                     {query ? ` · “${query}”` : " · 서울 전체"}
                   </p>
+                  {saveError ? (
+                    <p className="save-feedback" role="status">
+                      {saveError}
+                    </p>
+                  ) : null}
                 </div>
               </div>
 
@@ -761,7 +878,14 @@ export function Discovery({
                             type="button"
                             className="save-button"
                             aria-pressed={isSaved}
-                            onClick={() => toggleSaved(branch.publicId)}
+                            aria-busy={savingIds.has(branch.publicId)}
+                            data-state={
+                              savingIds.has(branch.publicId)
+                                ? "loading"
+                                : "idle"
+                            }
+                            disabled={savingIds.has(branch.publicId)}
+                            onClick={() => void toggleSaved(branch.publicId)}
                           >
                             {isSaved ? (
                               <Check
@@ -776,7 +900,11 @@ export function Discovery({
                                 strokeWidth={2}
                               />
                             )}
-                            {isSaved ? "저장됨" : "저장"}
+                            {isSaved
+                              ? "저장됨"
+                              : savedSource === "loading"
+                                ? "확인 중…"
+                                : "저장"}
                           </button>
                         </aside>
                       </li>

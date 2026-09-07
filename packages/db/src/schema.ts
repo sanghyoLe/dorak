@@ -6,6 +6,7 @@ import {
   integer,
   jsonb,
   numeric,
+  primaryKey,
   pgSchema,
   smallint,
   text,
@@ -227,6 +228,26 @@ export const reviews = communitySchema.table(
       table.reviewerUserId,
     ),
     index("reviews_created_idx").on(table.status, table.createdAt),
+  ],
+);
+
+export const savedBranches = communitySchema.table(
+  "saved_branches",
+  {
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    branchId: uuid("branch_id")
+      .notNull()
+      .references(() => branches.id, { onDelete: "cascade" }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
+  },
+  (table) => [
+    primaryKey({
+      name: "saved_branches_pkey",
+      columns: [table.userId, table.branchId],
+    }),
+    index("saved_branches_user_created_idx").on(table.userId, table.createdAt),
   ],
 );
 
