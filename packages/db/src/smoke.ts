@@ -33,7 +33,7 @@ try {
   `;
 
   assert(state);
-  assert.equal(state.appliedMigrations, 13);
+  assert.equal(state.appliedMigrations, 14);
   assert.equal(state.branchTable, "catalog.branches");
   assert.equal(state.reviewTable, "community.reviews");
   assert.equal(state.reviewReportsTable, "community.review_reports");

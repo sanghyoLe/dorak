@@ -1,10 +1,23 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  distanceInMeters,
   InMemoryCatalog,
   ReviewRateLimitError,
   SYNTHETIC_DEMO_USER,
 } from "./index.js";
+
+describe("distanceInMeters", () => {
+  it("calculates a stable distance between two Seoul points", () => {
+    const distance = distanceInMeters(
+      { latitude: 37.5665, longitude: 126.978 },
+      { latitude: 37.5704, longitude: 126.9922 },
+    );
+
+    expect(distance).toBeGreaterThan(1_200);
+    expect(distance).toBeLessThan(1_400);
+  });
+});
 
 const reviewSubmission = {
   usageType: "delivery" as const,

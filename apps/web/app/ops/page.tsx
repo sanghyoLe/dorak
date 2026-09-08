@@ -64,41 +64,34 @@ export default async function OpsPage() {
     <main id="main-content" className="ops-shell">
       <header className="ops-header">
         <div>
-          <p>도락 / 운영실</p>
-          <h1>식당 후보 검수</h1>
+          <p>도락</p>
+          <h1>운영</h1>
+          <span>
+            신고 {reports.length}건 · 후보 {candidates.length}건 · 리뷰{" "}
+            {reviews.length}건
+          </span>
         </div>
         <nav aria-label="운영 메뉴">
-          <a href="#queue">대기열</a>
           <a href="#reports">신고 검토</a>
+          <a href="#queue">식당 후보</a>
           <a href="#reviews">리뷰 관리</a>
           <Link href="/">소비자 웹</Link>
           <Link href="/api/health">데이터 상태</Link>
         </nav>
       </header>
 
-      <section className="ops-intro" aria-labelledby="ops-intro-title">
-        <p>수집 후보 → 검수 결정</p>
-        <h2 id="ops-intro-title">
-          원문을 보존하고, 지점으로 만들기 전에 사람이 확인합니다.
-        </h2>
-        <p>
-          현재 후보와 주소는 제품 검증용 합성 데이터입니다. 승인과 반려는 같은
-          애플리케이션의 API를 거쳐 {dataModeLabel} 저장소에 반영됩니다.
-        </p>
-      </section>
+      <ReportQueue initialReports={reports} dataAvailable={dataAvailable} />
 
       <CandidateQueue
         initialCandidates={candidates}
         dataAvailable={dataAvailable}
       />
 
-      <ReportQueue initialReports={reports} dataAvailable={dataAvailable} />
-
       <ReviewQueue initialReviews={reviews} dataAvailable={dataAvailable} />
 
       <footer className="ops-footer">
-        <strong>도락 운영실</strong>
-        <span>합성 데이터 환경 · {dataModeLabel}</span>
+        <strong>도락 운영</strong>
+        <span>{dataModeLabel} 저장소</span>
       </footer>
     </main>
   );

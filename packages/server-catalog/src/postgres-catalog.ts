@@ -8,6 +8,8 @@ import type {
   CuisineKey,
   DataProvenance,
   IngestionCandidate,
+  NearbyBranch,
+  NearbyBranchSearchOptions,
   OpsReview,
   OpsReviewReport,
   ReviewReportDecision,
@@ -44,7 +46,7 @@ interface BranchRow {
   cuisine: string;
   shortDescription: string;
   signatureMenu: string[];
-  priceBand: number;
+  priceBand: number | null;
   rating: number | null;
   reviewCount: number;
   provenance: DataProvenance;
@@ -52,6 +54,10 @@ interface BranchRow {
   longitude: number | null;
   sourceName: string | null;
   lastVerifiedAt: Date | string | null;
+}
+
+interface NearbyBranchRow extends BranchRow {
+  distanceMeters: number;
 }
 
 interface LocationRow {
@@ -128,8 +134,11 @@ function toCuisineKey(value: string): CuisineKey {
 
 function mapBranch(row: BranchRow): BranchSummary {
   const cuisine = toCuisineKey(row.cuisine);
-  const priceBand = "₩".repeat(Math.min(Math.max(row.priceBand, 1), 4)) as
-    "₩" | "₩₩" | "₩₩₩" | "₩₩₩₩";
+  const priceBand =
+    row.priceBand === null
+      ? null
+      : ("₩".repeat(Math.min(Math.max(row.priceBand, 1), 4)) as
+          "₩" | "₩₩" | "₩₩₩" | "₩₩₩₩");
 
   return {
     id: row.id,
@@ -520,6 +529,64 @@ export class PostgresCatalog {
     `;
 
     return rows[0] ? mapBranch(rows[0]) : undefined;
+  }
+
+  async findNearbyBranches(
+    options: Readonly<NearbyBranchSearchOptions>,
+  ): Promise<NearbyBranch[]> {
+    const radiusMeters = Math.min(
+      Math.max(Math.trunc(options.radiusMeters ?? 3_000), 100),
+      20_000,
+    );
+    const limit = Math.min(Math.max(Math.trunc(options.limit ?? 20), 1), 50);
+    const rows = await this.#database.raw<NearbyBranchRow[]>`
+      SELECT
+        branch.id::text,
+        branch.public_id AS "publicId",
+        branch.name,
+        branch.neighborhood,
+        branch.district,
+        branch.road_address AS address,
+        branch.phone,
+        branch.website_url AS "websiteUrl",
+        branch.opening_hours AS "openingHours",
+        branch.closed_days AS "closedDays",
+        branch.external_info_source AS "externalInfoSource",
+        branch.external_info_updated_at AS "externalInfoUpdatedAt",
+        branch.cuisine_key AS cuisine,
+        branch.short_description AS "shortDescription",
+        branch.signature_menu AS "signatureMenu",
+        branch.price_band::int AS "priceBand",
+        branch.rating::float8 AS rating,
+        branch.review_count::int AS "reviewCount",
+        branch.provenance,
+        ST_Y(branch.location::geometry)::float8 AS latitude,
+        ST_X(branch.location::geometry)::float8 AS longitude,
+        source.display_name AS "sourceName",
+        branch.last_verified_at AS "lastVerifiedAt",
+        ST_Distance(
+          branch.location,
+          ST_SetSRID(ST_MakePoint(${options.longitude}, ${options.latitude}), 4326)::geography
+        )::float8 AS "distanceMeters"
+      FROM catalog.branches AS branch
+      LEFT JOIN ingestion.sources AS source
+        ON source.source_key = branch.source_key
+      WHERE branch.status = 'active'
+        AND branch.location IS NOT NULL
+        AND (${options.approvedOnly ?? false} = false OR branch.provenance = 'approved_source')
+        AND ST_DWithin(
+          branch.location,
+          ST_SetSRID(ST_MakePoint(${options.longitude}, ${options.latitude}), 4326)::geography,
+          ${radiusMeters}
+        )
+      ORDER BY "distanceMeters", branch.review_count DESC, branch.name, branch.public_id
+      LIMIT ${limit}
+    `;
+
+    return rows.map((row) => ({
+      ...mapBranch(row),
+      distanceMeters: row.distanceMeters,
+    }));
   }
 
   async listSavedBranches(userId: string): Promise<BranchSummary[]> {

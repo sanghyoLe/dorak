@@ -55,6 +55,34 @@ describeWithDatabase("PostgresCatalog integration", () => {
     expect(branchCount).toBeGreaterThan(0);
   });
 
+  it("finds coordinate-bearing branches in distance order", async () => {
+    const branches = (
+      await catalog.searchBranches("", undefined, {
+        limit: 20,
+      })
+    ).data;
+    const origin = branches.find(
+      (branch) => branch.latitude !== null && branch.longitude !== null,
+    );
+
+    expect(origin?.latitude).toBeTypeOf("number");
+    expect(origin?.longitude).toBeTypeOf("number");
+
+    const nearby = await catalog.findNearbyBranches({
+      latitude: origin!.latitude!,
+      longitude: origin!.longitude!,
+      radiusMeters: 1_000,
+      limit: 20,
+    });
+
+    expect(nearby.length).toBeGreaterThan(0);
+    expect(nearby[0]).toMatchObject({ publicId: origin!.publicId });
+    expect(nearby[0]?.distanceMeters).toBeLessThan(1);
+    expect(nearby.map((branch) => branch.distanceMeters)).toEqual(
+      nearby.map((branch) => branch.distanceMeters).toSorted((a, b) => a - b),
+    );
+  });
+
   it("uses trigram similarity for a misspelled restaurant name", async () => {
     const result = await catalog.searchBranches("골목 제면쇼");
 

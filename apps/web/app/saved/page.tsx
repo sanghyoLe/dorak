@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { redirect } from "next/navigation";
 
 import { SavedList } from "../../components/saved-list";
 import { SiteFooter } from "../../components/site-footer";
@@ -11,9 +10,10 @@ export const dynamic = "force-dynamic";
 
 export default async function SavedPage() {
   const viewer = await getViewer();
-  if (!viewer) redirect("/signin?callbackUrl=%2Fsaved");
-
-  const branches = await getCatalog().listSavedBranches(viewer.userId);
+  const accountViewer = viewer && !viewer.demo ? viewer : null;
+  const branches = accountViewer
+    ? await getCatalog().listSavedBranches(accountViewer.userId)
+    : [];
 
   return (
     <>
@@ -24,12 +24,10 @@ export default async function SavedPage() {
           <span aria-hidden="true">›</span>
           <span>저장한 식당</span>
         </nav>
-        <header className="saved-page__heading">
-          <p>내 목록</p>
-          <h1>저장한 식당</h1>
-          <span>{branches.length.toLocaleString("ko-KR")}곳</span>
-        </header>
-        <SavedList initialBranches={branches} />
+        <SavedList
+          initialBranches={branches}
+          authenticated={Boolean(accountViewer)}
+        />
       </main>
       <SiteFooter />
     </>

@@ -1,4 +1,4 @@
-import { ChevronLeft, MapPin, ShieldCheck } from "lucide-react";
+import { ChevronLeft, MapPin } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -108,12 +108,11 @@ export default async function BranchPage({
           <div className="branch-heading__actions">
             <SavedBranchButton publicId={branch.publicId} />
           </div>
-          <div className="branch-heading__status" aria-label="정보 상태">
-            <span data-state="attention">영업 정보 확인 전</span>
-            {branch.provenance === "synthetic" ? (
+          {branch.provenance === "synthetic" ? (
+            <div className="branch-heading__status" aria-label="정보 상태">
               <span data-state="sample">예시 식당</span>
-            ) : null}
-          </div>
+            </div>
+          ) : null}
         </header>
 
         <section className="branch-overview" aria-label={`${branch.name} 요약`}>
@@ -135,10 +134,12 @@ export default async function BranchPage({
               <dt>리뷰</dt>
               <dd>{branch.reviewCount}건</dd>
             </div>
-            <div>
-              <dt>가격대</dt>
-              <dd>{branch.priceBand}</dd>
-            </div>
+            {branch.priceBand ? (
+              <div>
+                <dt>가격대</dt>
+                <dd>{branch.priceBand}</dd>
+              </div>
+            ) : null}
           </dl>
         </section>
 
@@ -217,50 +218,31 @@ export default async function BranchPage({
                             <strong>{review.rating.toFixed(1)}</strong>
                           </p>
                         </header>
-                        <div
-                          className="review-trust-labels"
-                          aria-label="리뷰 신뢰 정보"
-                        >
-                          <span>
-                            {review.usageType
-                              ? REVIEW_USAGE_LABELS[review.usageType]
-                              : "이용 방식 미확인"}
-                          </span>
-                          <span
-                            data-level={
-                              review.identityVerified ? "account" : "sample"
-                            }
-                          >
-                            <ShieldCheck
-                              aria-hidden="true"
-                              size={14}
-                              strokeWidth={2}
-                            />
+                        <p className="review-entry__context">
+                          {review.usageType
+                            ? REVIEW_USAGE_LABELS[review.usageType]
+                            : "이용 방식 미확인"}
+                          {review.independentVisitAttested === true
+                            ? " · 협찬 없음(작성자 응답)"
+                            : " · 이해관계 미확인"}
+                        </p>
+                        <p className="review-entry__body">{review.body}</p>
+                        <details className="review-entry__details">
+                          <summary>리뷰 정보</summary>
+                          <p>
                             {review.identityVerified
-                              ? "이메일 확인"
-                              : "이메일 미확인"}
-                          </span>
-                          <span>
+                              ? "이메일이 확인된 계정"
+                              : "이메일 미확인 계정"}
+                            {" · "}
                             {review.visitVerification === "self_reported"
-                              ? "이용일 자기입력"
+                              ? "이용일은 작성자가 입력했으며 증빙은 확인하지 않음"
                               : review.visitVerification === "receipt"
                                 ? "영수증 확인"
                                 : "예약 내역 확인"}
-                          </span>
-                          <span>
-                            {review.independentVisitAttested === true
-                              ? "협찬·관계 없음 · 작성자 확인"
-                              : "이해관계 미확인"}
-                          </span>
-                        </div>
-                        <p className="review-entry__body">{review.body}</p>
+                          </p>
+                        </details>
                         <footer>
-                          <span>
-                            {formatKoreanDate(review.createdAt)} 작성
-                            {review.visitVerification === "self_reported"
-                              ? " · 이용 증빙 미확인"
-                              : null}
-                          </span>
+                          <span>{formatKoreanDate(review.createdAt)} 작성</span>
                         </footer>
                         <ReviewReportForm
                           reviewPublicId={review.publicId}
@@ -354,17 +336,15 @@ export default async function BranchPage({
                     {branch.district} {branch.neighborhood}
                   </dd>
                 </div>
-                <div>
-                  <dt>가격대</dt>
-                  <dd>
-                    {branch.provenance === "approved_source"
-                      ? "확인 전"
-                      : branch.priceBand}
-                  </dd>
-                </div>
+                {branch.priceBand ? (
+                  <div>
+                    <dt>가격대</dt>
+                    <dd>{branch.priceBand}</dd>
+                  </div>
+                ) : null}
                 <div>
                   <dt>영업시간</dt>
-                  <dd>{branch.openingHours ?? "등록 정보 없음"}</dd>
+                  <dd>{branch.openingHours ?? "영업시간 정보 없음"}</dd>
                 </div>
                 {branch.closedDays ? (
                   <div>

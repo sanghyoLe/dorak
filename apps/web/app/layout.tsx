@@ -29,8 +29,7 @@ export const metadata: Metadata = {
     default: "도락 — 좋은 식당을 찾는 즐거움",
     template: "%s — 도락",
   },
-  description:
-    "한국의 좋은 식당을 지점 단위로 찾고 기록하는 도락의 개발 프리뷰",
+  description: "서울의 식당을 지점 단위로 찾고 직접 먹어본 리뷰를 기록합니다.",
   applicationName: "도락",
   robots: indexingEnabled ? { index: true, follow: true } : { index: false },
   openGraph: {

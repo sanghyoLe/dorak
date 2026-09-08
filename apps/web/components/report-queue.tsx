@@ -60,7 +60,7 @@ export function ReportQueue({
       }
       setMessage(
         action === "resolve"
-          ? "신고를 처리 완료로 기록했습니다. 공개 숨김은 리뷰 관리에서 별도로 진행합니다."
+          ? "신고 검토를 종료했습니다. 리뷰 공개 상태는 리뷰 관리에서 따로 바꿔야 합니다."
           : "신고를 기각으로 기록했습니다.",
       );
     } catch (error) {
@@ -81,14 +81,18 @@ export function ReportQueue({
     >
       <div className="queue__heading">
         <div>
-          <p>비공개 신고 검토</p>
+          <p>접수된 내용</p>
           <h2 id="report-queue-title">신고 대기열</h2>
         </div>
         <strong aria-live="polite">{reports.length}건</strong>
       </div>
 
-      <p className="sr-only" aria-live="polite" aria-atomic="true">
-        {message}
+      <p
+        className="report-queue__message"
+        aria-live="polite"
+        aria-atomic="true"
+      >
+        {message || "신고 검토와 리뷰 공개 상태는 따로 처리됩니다."}
       </p>
 
       {reports.length ? (
@@ -103,8 +107,8 @@ export function ReportQueue({
                       {report.branchName}
                     </Link>
                     <span>
-                      {REVIEW_REPORT_REASON_LABELS[report.reason]} · 리뷰{" "}
-                      {report.reviewPublicId}
+                      {REVIEW_REPORT_REASON_LABELS[report.reason]} · 작성자{" "}
+                      {report.reviewAuthorName}
                     </span>
                   </div>
                   <Flag aria-hidden="true" size={18} strokeWidth={2} />
@@ -117,9 +121,7 @@ export function ReportQueue({
                       ? "로그인 계정 신고"
                       : "익명 신고"}
                   </span>
-                  <span>
-                    {formatReportDate(report.createdAt)}
-                  </span>
+                  <span>{formatReportDate(report.createdAt)}</span>
                 </footer>
                 <label className="ops-report__note">
                   처리 사유
@@ -146,7 +148,7 @@ export function ReportQueue({
                     onClick={() => void decide(report, "resolve")}
                   >
                     <Check aria-hidden="true" size={16} strokeWidth={2} />
-                    {pending ? "처리 중" : "처리 완료"}
+                    {pending ? "처리 중" : "검토 종료"}
                   </button>
                   <button
                     type="button"

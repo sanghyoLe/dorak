@@ -121,7 +121,7 @@ try {
           ${branch.address},
           ${branch.cuisine},
           ${branch.shortDescription},
-          ${branch.priceBand.length},
+          ${branch.priceBand?.length ?? null},
           ${transaction.array([...branch.signatureMenu])},
           ${branch.rating},
           ${branch.reviewCount},

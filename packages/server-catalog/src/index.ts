@@ -1,5 +1,7 @@
 import type {
   BranchLocationGroup,
+  NearbyBranch,
+  NearbyBranchSearchOptions,
   BranchSearchOptions,
   BranchSearchResponse,
   BranchSummary,
@@ -34,6 +36,25 @@ function normalise(value: string): string {
   return value.normalize("NFKC").trim().toLocaleLowerCase("ko-KR");
 }
 
+export function distanceInMeters(
+  first: Readonly<{ latitude: number; longitude: number }>,
+  second: Readonly<{ latitude: number; longitude: number }>,
+): number {
+  const earthRadiusMeters = 6_371_000;
+  const toRadians = (degrees: number) => (degrees * Math.PI) / 180;
+  const latitudeDelta = toRadians(second.latitude - first.latitude);
+  const longitudeDelta = toRadians(second.longitude - first.longitude);
+  const firstLatitude = toRadians(first.latitude);
+  const secondLatitude = toRadians(second.latitude);
+  const haversine =
+    Math.sin(latitudeDelta / 2) ** 2 +
+    Math.cos(firstLatitude) *
+      Math.cos(secondLatitude) *
+      Math.sin(longitudeDelta / 2) ** 2;
+
+  return 2 * earthRadiusMeters * Math.asin(Math.sqrt(haversine));
+}
+
 export class InMemoryCatalog {
   readonly mode = "memory" as const;
   readonly #branches: BranchSummary[];
@@ -66,7 +87,8 @@ export class InMemoryCatalog {
         !options.neighborhood || branch.neighborhood === options.neighborhood;
       const matchesPrice =
         !options.priceBands?.length ||
-        options.priceBands.includes(branch.priceBand.length);
+        (branch.priceBand !== null &&
+          options.priceBands.includes(branch.priceBand.length));
       const matchesRating =
         options.minRating === undefined ||
         (branch.rating !== null && branch.rating >= options.minRating);
@@ -168,6 +190,41 @@ export class InMemoryCatalog {
 
   findBranch(publicId: string): BranchSummary | undefined {
     return this.#branches.find((branch) => branch.publicId === publicId);
+  }
+
+  findNearbyBranches(
+    options: Readonly<NearbyBranchSearchOptions>,
+  ): NearbyBranch[] {
+    const radiusMeters = Math.min(
+      Math.max(Math.trunc(options.radiusMeters ?? 3_000), 100),
+      20_000,
+    );
+    const limit = Math.min(Math.max(Math.trunc(options.limit ?? 20), 1), 50);
+
+    return this.#branches
+      .filter(
+        (branch) =>
+          branch.latitude !== null &&
+          branch.latitude !== undefined &&
+          branch.longitude !== null &&
+          branch.longitude !== undefined &&
+          (!options.approvedOnly || branch.provenance === "approved_source"),
+      )
+      .map((branch): NearbyBranch => ({
+        ...branch,
+        distanceMeters: distanceInMeters(options, {
+          latitude: branch.latitude!,
+          longitude: branch.longitude!,
+        }),
+      }))
+      .filter((branch) => branch.distanceMeters <= radiusMeters)
+      .toSorted(
+        (left, right) =>
+          left.distanceMeters - right.distanceMeters ||
+          right.reviewCount - left.reviewCount ||
+          left.name.localeCompare(right.name, "ko-KR"),
+      )
+      .slice(0, limit);
   }
 
   listSavedBranches(userId: string): BranchSummary[] {

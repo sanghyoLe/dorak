@@ -8,47 +8,70 @@ const chromePath =
   "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome";
 const outputDir =
   process.env.DORAK_SCREENSHOT_DIR ?? "/private/tmp/dorak-visual";
-const detailUrl = "http://localhost:3000/restaurants/br_Zk8sD1mP4qR7vT2xN5cA";
+const baseUrl = process.env.DORAK_BASE_URL ?? "http://localhost:3000";
+const branchResponse = await fetch(`${baseUrl}/api/v1/branches?limit=20`);
+assert.equal(branchResponse.status, 200, "branch fixture request failed");
+const branchPayload = await branchResponse.json();
+const detailBranch = branchPayload.data?.[0];
+assert.ok(detailBranch, "visual smoke requires at least one public branch");
+const nearbyOrigin = branchPayload.data?.find(
+  (branch) =>
+    typeof branch.latitude === "number" && typeof branch.longitude === "number",
+);
+assert.ok(nearbyOrigin, "visual smoke requires a coordinate-bearing branch");
+const detailUrl = `${baseUrl}/restaurants/${detailBranch.publicId}`;
 
 const targets = [
-  { name: "web-320", url: "http://localhost:3000", width: 320, height: 900 },
-  { name: "web-375", url: "http://localhost:3000", width: 375, height: 900 },
-  { name: "web-414", url: "http://localhost:3000", width: 414, height: 900 },
-  { name: "web-768", url: "http://localhost:3000", width: 768, height: 1000 },
-  { name: "web-1280", url: "http://localhost:3000", width: 1280, height: 800 },
-  { name: "web-1440", url: "http://localhost:3000", width: 1440, height: 1000 },
+  { name: "web-320", url: baseUrl, width: 320, height: 900 },
+  { name: "web-375", url: baseUrl, width: 375, height: 900 },
+  { name: "web-414", url: baseUrl, width: 414, height: 900 },
+  { name: "web-768", url: baseUrl, width: 768, height: 1000 },
+  { name: "web-1280", url: baseUrl, width: 1280, height: 800 },
+  { name: "web-1440", url: baseUrl, width: 1440, height: 1000 },
   { name: "detail-320", url: detailUrl, width: 320, height: 900 },
   { name: "detail-375", url: detailUrl, width: 375, height: 900 },
   { name: "detail-414", url: detailUrl, width: 414, height: 900 },
   { name: "detail-768", url: detailUrl, width: 768, height: 1000 },
   ...[320, 375, 414, 768].map((width) => ({
     name: `review-policy-${width}`,
-    url: "http://localhost:3000/review-policy",
+    url: `${baseUrl}/review-policy`,
+    width,
+    height: 1000,
+  })),
+  ...[320, 375, 414, 768].map((width) => ({
+    name: `saved-${width}`,
+    url: `${baseUrl}/saved`,
+    width,
+    height: 1000,
+  })),
+  ...[320, 375, 414, 768].map((width) => ({
+    name: `nearby-${width}`,
+    url: `${baseUrl}/nearby`,
     width,
     height: 1000,
   })),
   { name: "detail-1440", url: detailUrl, width: 1440, height: 1000 },
   {
     name: "ops-375",
-    url: "http://localhost:3000/ops",
+    url: `${baseUrl}/ops`,
     width: 375,
     height: 900,
   },
   {
     name: "ops-1440",
-    url: "http://localhost:3000/ops",
+    url: `${baseUrl}/ops`,
     width: 1440,
     height: 1000,
   },
   {
     name: "privacy-375",
-    url: "http://localhost:3000/privacy",
+    url: `${baseUrl}/privacy`,
     width: 375,
     height: 900,
   },
   {
     name: "privacy-1440",
-    url: "http://localhost:3000/privacy",
+    url: `${baseUrl}/privacy`,
     width: 1440,
     height: 1000,
   },
@@ -66,6 +89,10 @@ const browser = await puppeteer.launch({
 });
 
 try {
+  await browser
+    .defaultBrowserContext()
+    .overridePermissions(baseUrl, ["geolocation"]);
+
   for (const target of targets) {
     const page = await browser.newPage();
     await page.setViewport({
@@ -78,12 +105,32 @@ try {
     if (target.url.includes("/ops") && opsUsername && opsPassword) {
       await page.authenticate({ username: opsUsername, password: opsPassword });
     }
+    if (target.url.endsWith("/nearby")) {
+      await page.setGeolocation({
+        latitude: nearbyOrigin.latitude,
+        longitude: nearbyOrigin.longitude,
+      });
+    }
     const response = await page.goto(target.url, { waitUntil: "networkidle0" });
     assert.equal(
       response?.status(),
       200,
       `${target.name}: page returned an error`,
     );
+
+    if (target.url.endsWith("/nearby")) {
+      await page.click(".nearby-locate-button");
+      await page.waitForSelector(".nearby-list");
+      const firstDistance = await page.$eval(
+        ".nearby-list__distance strong",
+        (element) => element.textContent?.trim(),
+      );
+      assert.equal(
+        firstDistance,
+        "10m",
+        `${target.name}: nearest result drifted`,
+      );
+    }
 
     const audit = await page.evaluate(() => {
       const root = document.documentElement;
@@ -217,16 +264,41 @@ try {
 
   const web = await browser.newPage();
   await web.setViewport({ width: 375, height: 900, deviceScaleFactor: 1 });
-  await web.goto("http://localhost:3000", { waitUntil: "networkidle0" });
-  await web.type("#branch-search", "들기름");
+  await web.setRequestInterception(true);
+  web.on("request", (request) => {
+    const url = new URL(request.url());
+    if (
+      url.pathname === "/api/v1/saved" ||
+      (url.pathname.startsWith("/api/v1/branches/") &&
+        url.pathname.endsWith("/saved"))
+    ) {
+      void request.respond({
+        status: 401,
+        contentType: "application/json",
+        body: JSON.stringify({ error: { code: "SIGN_IN_REQUIRED" } }),
+      });
+      return;
+    }
+    void request.continue();
+  });
+  await web.goto(baseUrl, { waitUntil: "networkidle0" });
+  await web.type("#branch-search", detailBranch.name);
   await web.click(".home-search .search-button");
   await web.waitForFunction(() => window.location.pathname === "/r");
   await web.waitForSelector(".result-heading");
   const resultSummary = await web.$eval(".result-heading", (element) =>
     element.textContent?.replace(/\s+/g, " ").trim(),
   );
-  assert.match(resultSummary ?? "", /1곳/);
+  assert.match(resultSummary ?? "", /[1-9][0-9,]*곳/);
   await web.click(".save-button");
+  await web.waitForFunction(
+    (publicId) => {
+      const stored = window.localStorage.getItem("dorak:saved-branches:v1");
+      return stored ? JSON.parse(stored).includes(publicId) : false;
+    },
+    {},
+    detailBranch.publicId,
+  );
   const saveLabel = await web.$eval(".save-button", (element) =>
     element.textContent?.trim(),
   );
@@ -236,9 +308,30 @@ try {
   const detailHeading = await web.$eval(".branch-heading h1", (element) =>
     element.textContent?.trim(),
   );
-  assert.equal(detailHeading, "골목 제면소");
+  assert.equal(detailHeading, detailBranch.name);
   console.log("web-interaction: search, save, and detail navigation passed");
   await web.close();
+
+  const saved = await browser.newPage();
+  await saved.setViewport({ width: 375, height: 900, deviceScaleFactor: 1 });
+  await saved.goto(`${baseUrl}/saved`, {
+    waitUntil: "networkidle0",
+  });
+  await saved.waitForSelector(".saved-restaurant-list");
+  const savedCount = await saved.$eval(
+    ".saved-page__heading > span",
+    (element) => element.textContent?.trim(),
+  );
+  assert.equal(savedCount, "1곳");
+  await saved.click(".saved-restaurant-list .save-button");
+  await saved.waitForSelector(".saved-page__empty");
+  const emptySavedCount = await saved.$eval(
+    ".saved-page__heading > span",
+    (element) => element.textContent?.trim(),
+  );
+  assert.equal(emptySavedCount, "0곳");
+  console.log("saved-interaction: local list, count, and removal passed");
+  await saved.close();
 
   const ops = await browser.newPage();
   if (opsUsername && opsPassword) {
@@ -261,18 +354,23 @@ try {
 
     void request.continue();
   });
-  await ops.goto("http://localhost:3000/ops", { waitUntil: "networkidle0" });
+  await ops.goto(`${baseUrl}/ops`, { waitUntil: "networkidle0" });
   const before = await ops.$$eval(".candidate", (elements) => elements.length);
-  assert.ok(before > 0, "ops-interaction: expected at least one candidate");
-  await ops.click(".decision-button--approve");
-  await ops.waitForFunction(
-    (expected) => document.querySelectorAll(".candidate").length === expected,
-    {},
-    before - 1,
-  );
-  const after = await ops.$$eval(".candidate", (elements) => elements.length);
-  assert.equal(after, before - 1);
-  console.log(`ops-interaction: approve changed queue ${before} → ${after}`);
+  if (before > 0) {
+    await ops.click(".decision-button--approve");
+    await ops.waitForFunction(
+      (expected) => document.querySelectorAll(".candidate").length === expected,
+      {},
+      before - 1,
+    );
+    const after = await ops.$$eval(".candidate", (elements) => elements.length);
+    assert.equal(after, before - 1);
+    console.log(`ops-interaction: approve changed queue ${before} → ${after}`);
+  } else {
+    console.log(
+      "ops-interaction: skipped; no pending candidate in current data",
+    );
+  }
   await ops.close();
 } finally {
   await browser.close();

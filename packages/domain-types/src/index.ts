@@ -42,7 +42,7 @@ export interface BranchSummary {
   cuisineLabel: string;
   shortDescription: string;
   signatureMenu: string[];
-  priceBand: "₩" | "₩₩" | "₩₩₩" | "₩₩₩₩";
+  priceBand: "₩" | "₩₩" | "₩₩₩" | "₩₩₩₩" | null;
   rating: null | number;
   reviewCount: number;
   provenance: DataProvenance;
@@ -62,6 +62,18 @@ export interface BranchSearchResponse {
     pageSize?: number;
     sort?: BranchSort;
   };
+}
+
+export interface NearbyBranch extends BranchSummary {
+  distanceMeters: number;
+}
+
+export interface NearbyBranchSearchOptions {
+  latitude: number;
+  longitude: number;
+  radiusMeters?: number;
+  limit?: number;
+  approvedOnly?: boolean;
 }
 
 export interface BranchLocationGroup {

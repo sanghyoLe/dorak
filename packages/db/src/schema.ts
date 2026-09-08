@@ -105,7 +105,7 @@ export const branches = catalogSchema.table(
     }),
     cuisineKey: text("cuisine_key").notNull(),
     shortDescription: text("short_description").notNull(),
-    priceBand: smallint("price_band").notNull(),
+    priceBand: smallint("price_band"),
     signatureMenu: text("signature_menu").array().notNull().default([]),
     rating: numeric({ precision: 3, scale: 2 }),
     reviewCount: integer("review_count").notNull().default(0),

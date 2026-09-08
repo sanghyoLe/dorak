@@ -5,7 +5,7 @@ import { SiteHeader } from "../../components/site-header";
 
 export const metadata = {
   title: "개인정보 처리 안내",
-  description: "도락 MVP가 수집하고 이용하는 정보에 대한 안내",
+  description: "도락이 수집하고 이용하는 정보에 대한 안내",
 };
 
 const contactEmail = process.env.DORAK_CONTACT_EMAIL;
@@ -16,12 +16,8 @@ export default function PrivacyPage() {
       <SiteHeader />
       <main id="main-content" className="policy-page">
         <header>
-          <p>도락 운영 원칙 02</p>
-          <h1>필요한 정보만, 쓰임이 보이게 다룹니다.</h1>
-          <p>
-            이 안내는 도락 MVP 기준입니다. 수집 항목이나 이용 목적이 달라지면
-            공개 전에 내용을 먼저 고칩니다.
-          </p>
+          <h1>개인정보 처리 안내</h1>
+          <p>도락에서 어떤 정보를 수집하고 어디에 쓰는지 안내합니다.</p>
         </header>
 
         <section className="policy-copy">
@@ -33,8 +29,13 @@ export default function PrivacyPage() {
             </li>
             <li>로그인 유지와 보안을 위한 세션, 접속 IP, 브라우저 정보</li>
             <li>
-              리뷰 작성 시 닉네임, 평점, 본문, 방문일, 방문 확인 상태와 작성
-              시각
+              리뷰 작성 시 닉네임, 평점, 본문, 이용 방식, 이용일, 이용 확인
+              상태, 이해관계 확인과 작성 시각
+            </li>
+            <li>계정으로 저장한 식당과 저장 시각</li>
+            <li>
+              리뷰 신고 시 신고 사유와 상세 내용, 신고 시각, 로그인한 경우 계정
+              정보
             </li>
           </ul>
 
@@ -57,15 +58,14 @@ export default function PrivacyPage() {
           <h2>문의와 권리 행사</h2>
           <p>
             자신의 정보 열람·정정·삭제나 리뷰 신고를 요청하려면 운영자에게
-            연락할 수 있습니다. 정식 공개 전에는 실제 연락 가능한 이메일로 아래
-            주소를 반드시 교체합니다.
+            연락할 수 있습니다.
           </p>
           {contactEmail ? (
             <p>
               <a href={`mailto:${contactEmail}`}>{contactEmail}</a>
             </p>
           ) : (
-            <p>운영자 연락처는 공개 준비 중입니다.</p>
+            <p>문의 기능을 준비하고 있습니다.</p>
           )}
         </section>
 

@@ -52,6 +52,11 @@
   font-size: var(--text-lg);
 }
 
+.ops-header > div > span {
+  color: var(--color-ink-soft);
+  font-size: var(--text-sm);
+}
+
 .ops-header nav {
   display: flex;
   flex-wrap: wrap;
@@ -105,6 +110,13 @@
   width: min(100%, var(--content-max));
   margin-inline: auto;
   padding: 0 var(--page-gutter) var(--space-xl);
+}
+
+.report-queue__message {
+  min-height: 1lh;
+  margin: var(--space-sm) 0 0;
+  color: var(--color-ink-soft);
+  font-size: var(--text-sm);
 }
 
 .ops-report-list {
@@ -506,14 +518,12 @@
 }
 
 .queue-empty {
-  min-height: 20rem;
   display: grid;
-  justify-items: center;
-  align-content: center;
+  justify-items: start;
   gap: var(--space-xs);
-  padding: var(--space-xl);
+  padding: var(--space-md) 0;
+  border-block-end: var(--rule-hair) solid var(--color-rule-strong);
   background: var(--color-paper);
-  text-align: center;
 }
 
 .queue-empty h3,

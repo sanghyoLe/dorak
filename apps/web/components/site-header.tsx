@@ -16,15 +16,15 @@ export async function SiteHeader() {
         </Link>
         <HeaderSearch />
         <nav aria-label="사용자 메뉴">
+          <Link
+            className="saved-nav-link"
+            href="/saved"
+            aria-label="저장한 식당"
+          >
+            저장
+          </Link>
           {viewer ? (
             <>
-              <Link
-                className="saved-nav-link"
-                href="/saved"
-                aria-label="저장한 식당"
-              >
-                저장
-              </Link>
               <span className="viewer-label">
                 {viewer.demo ? "체험 계정" : `${viewer.name} 님`}
               </span>

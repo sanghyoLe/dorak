@@ -63,10 +63,9 @@ function compactRestaurantName(value: string): string {
 }
 
 function ratingLabel(branch: BranchSummary): string {
-  if (branch.reviewCount < 5 || branch.rating === null) return "아직 적음";
-  if (branch.rating >= 4.5) return "아주 좋음";
-  if (branch.rating >= 4) return "좋음";
-  return "보통";
+  if (branch.rating === null) return "평가 전";
+  if (branch.reviewCount < 5) return "리뷰가 적어요";
+  return `리뷰 ${branch.reviewCount}건`;
 }
 
 function paginationItems(
@@ -287,7 +286,9 @@ export function Discovery({
     const matches = loadedBranches.filter((branch) => {
       const matchesCuisine = cuisine === "all" || branch.cuisine === cuisine;
       const matchesPrice =
-        priceBands.length === 0 || priceBands.includes(branch.priceBand.length);
+        priceBands.length === 0 ||
+        (branch.priceBand !== null &&
+          priceBands.includes(branch.priceBand.length));
       const matchesRating =
         minRating === undefined ||
         (branch.rating !== null && branch.rating >= minRating);
@@ -579,6 +580,11 @@ export function Discovery({
             onSubmit={submitSearch}
           />
 
+          <Link className="home-nearby-link" href="/nearby">
+            <MapPin aria-hidden="true" size={17} strokeWidth={2} />
+            현재 위치에서 찾기
+          </Link>
+
           <header className="home-index__masthead">
             <div className="home-index__heading">
               <h1 id="home-title">
@@ -595,7 +601,7 @@ export function Discovery({
               aria-labelledby="popular-location-title"
             >
               <div className="portal-rail__heading">
-                <h2 id="popular-location-title">인기 지역</h2>
+                <h2 id="popular-location-title">식당이 많은 지역</h2>
                 <span>{locations.length.toLocaleString("ko-KR")}개 지역</span>
               </div>
               <div className="portal-link-grid">
@@ -662,7 +668,7 @@ export function Discovery({
                       <span className="home-index__preview-meta">
                         {branch.rating !== null
                           ? branch.rating.toFixed(1)
-                          : branch.priceBand}
+                          : `${branch.reviewCount}건`}
                         <ChevronRight
                           aria-hidden="true"
                           size={16}
@@ -840,7 +846,7 @@ export function Discovery({
                             {branch.address}
                           </p>
                           <p className="restaurant-hours">
-                            {branch.openingHours ?? "영업시간 확인 전"}
+                            {branch.openingHours ?? "영업시간 정보 없음"}
                             {branch.closedDays
                               ? ` · ${branch.closedDays} 휴무`
                               : ""}
@@ -865,14 +871,12 @@ export function Discovery({
                               <dt>리뷰</dt>
                               <dd>{branch.reviewCount}건</dd>
                             </div>
-                            <div>
-                              <dt>가격대</dt>
-                              <dd>
-                                {branch.provenance === "approved_source"
-                                  ? "확인 전"
-                                  : branch.priceBand}
-                              </dd>
-                            </div>
+                            {branch.priceBand ? (
+                              <div>
+                                <dt>가격대</dt>
+                                <dd>{branch.priceBand}</dd>
+                              </div>
+                            ) : null}
                           </dl>
                           <button
                             type="button"
