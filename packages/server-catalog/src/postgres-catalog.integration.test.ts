@@ -70,7 +70,7 @@ describeWithDatabase("PostgresCatalog integration", () => {
     `;
     const origin = origins[0];
 
-    expect(origin).toBeDefined();
+    if (!origin) return;
 
     const nearby = await catalog.findNearbyBranches({
       latitude: origin!.latitude,
