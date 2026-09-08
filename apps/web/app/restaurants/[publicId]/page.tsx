@@ -4,6 +4,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { ReviewForm } from "../../../components/review-form";
+import { ReviewReportForm } from "../../../components/review-report-form";
 import { KakaoMap } from "../../../components/kakao-map";
 import { SavedBranchButton } from "../../../components/saved-branch-button";
 import { SiteFooter } from "../../../components/site-footer";
@@ -23,8 +24,6 @@ type BranchPageProps = Readonly<{
 }>;
 
 export const dynamic = "force-dynamic";
-
-const reviewContactEmail = process.env.DORAK_CONTACT_EMAIL;
 
 export async function generateMetadata({
   params,
@@ -262,14 +261,11 @@ export default async function BranchPage({
                               ? " · 이용 증빙 미확인"
                               : null}
                           </span>
-                          {reviewContactEmail ? (
-                            <a
-                              href={`mailto:${reviewContactEmail}?subject=${encodeURIComponent(`[도락 리뷰 신고] ${branch.name}`)}&body=${encodeURIComponent(`리뷰 ID: ${review.publicId}\n문제가 되는 이유를 적어 주세요.`)}`}
-                            >
-                              문제 신고
-                            </a>
-                          ) : null}
                         </footer>
+                        <ReviewReportForm
+                          reviewPublicId={review.publicId}
+                          branchName={branch.name}
+                        />
                       </article>
                     </li>
                   ))}

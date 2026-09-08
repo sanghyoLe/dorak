@@ -9,13 +9,22 @@ import type {
   DataProvenance,
   IngestionCandidate,
   OpsReview,
+  OpsReviewReport,
+  ReviewReportDecision,
+  ReviewReportStatus,
+  ReviewReportSubmission,
+  ReviewReportSummary,
   ReviewStatus,
   ReviewSubmission,
   ReviewSummary,
 } from "@dorak/domain-types";
 import { createPublicId } from "@dorak/ids";
 
-import { DuplicateReviewError, ReviewRateLimitError } from "./review-errors.js";
+import {
+  DuplicateReviewError,
+  DuplicateReviewReportError,
+  ReviewRateLimitError,
+} from "./review-errors.js";
 import type { ReviewerIdentity } from "./reviewer-identity.js";
 
 interface BranchRow {
@@ -81,6 +90,23 @@ interface OpsReviewRow extends ReviewRow {
   branchPublicId: string;
   branchName: string;
   status: ReviewStatus;
+}
+
+interface OpsReviewReportRow {
+  id: string;
+  publicId: string;
+  reviewPublicId: string;
+  branchPublicId: string;
+  branchName: string;
+  reviewAuthorName: string;
+  reviewBody: string;
+  reason: OpsReviewReport["reason"];
+  detail: string;
+  reporterAuthenticated: boolean;
+  status: ReviewReportStatus;
+  decisionNote: string | null;
+  decidedAt: Date | string | null;
+  createdAt: Date | string;
 }
 
 const CUISINE_LABELS: Record<CuisineKey, string> = {
@@ -176,6 +202,25 @@ function mapOpsReview(row: OpsReviewRow): OpsReview {
     branchPublicId: row.branchPublicId,
     branchName: row.branchName,
     status: row.status,
+  };
+}
+
+function mapOpsReviewReport(row: OpsReviewReportRow): OpsReviewReport {
+  return {
+    publicId: row.publicId,
+    reviewPublicId: row.reviewPublicId,
+    branchPublicId: row.branchPublicId,
+    branchName: row.branchName,
+    reviewAuthorName: row.reviewAuthorName,
+    reviewBody: row.reviewBody,
+    reason: row.reason,
+    detail: row.detail,
+    reporterAuthenticated: row.reporterAuthenticated,
+    status: row.status,
+    decisionNote: row.decisionNote,
+    decidedAt:
+      row.decidedAt === null ? null : serializePostgresTimestamp(row.decidedAt),
+    createdAt: serializePostgresTimestamp(row.createdAt),
   };
 }
 
@@ -836,5 +881,155 @@ export class PostgresCatalog {
     `;
 
     return rows[0] ? mapOpsReview(rows[0]) : undefined;
+  }
+
+  async createReviewReport(
+    reviewPublicId: string,
+    reporterUserId: string | null,
+    submission: ReviewReportSubmission,
+  ): Promise<ReviewReportSummary | undefined> {
+    try {
+      const rows = await this.#database.raw<
+        {
+          publicId: string;
+          status: ReviewReportStatus;
+          createdAt: Date | string;
+        }[]
+      >`
+        INSERT INTO community.review_reports (
+          public_id,
+          review_id,
+          reporter_user_id,
+          reason,
+          detail
+        )
+        SELECT
+          ${createPublicId("rr")},
+          review.id,
+          ${reporterUserId}::uuid,
+          ${submission.reason},
+          ${submission.detail}
+        FROM community.reviews AS review
+        WHERE review.public_id = ${reviewPublicId}
+        RETURNING
+          public_id AS "publicId",
+          status,
+          created_at AS "createdAt"
+      `;
+
+      const row = rows[0];
+      return row
+        ? {
+            publicId: row.publicId,
+            status: row.status,
+            createdAt: serializePostgresTimestamp(row.createdAt),
+          }
+        : undefined;
+    } catch (error) {
+      if (
+        typeof error === "object" &&
+        error !== null &&
+        "code" in error &&
+        error.code === "23505"
+      ) {
+        throw new DuplicateReviewReportError();
+      }
+      throw error;
+    }
+  }
+
+  async listReviewReports(
+    status: ReviewReportStatus = "pending",
+  ): Promise<OpsReviewReport[]> {
+    const rows = await this.#database.raw<OpsReviewReportRow[]>`
+      SELECT
+        report.id::text,
+        report.public_id AS "publicId",
+        review.public_id AS "reviewPublicId",
+        branch.public_id AS "branchPublicId",
+        branch.name AS "branchName",
+        review.author_name AS "reviewAuthorName",
+        review.body AS "reviewBody",
+        report.reason,
+        report.detail,
+        (report.reporter_user_id IS NOT NULL) AS "reporterAuthenticated",
+        report.status,
+        report.decision_note AS "decisionNote",
+        report.decided_at AS "decidedAt",
+        report.created_at AS "createdAt"
+      FROM community.review_reports AS report
+      JOIN community.reviews AS review ON review.id = report.review_id
+      JOIN catalog.branches AS branch ON branch.id = review.branch_id
+      WHERE report.status = ${status}
+      ORDER BY report.created_at DESC, report.id DESC
+      LIMIT 100
+    `;
+
+    return rows.map(mapOpsReviewReport);
+  }
+
+  async decideReviewReport(
+    publicId: string,
+    decision: ReviewReportDecision,
+    note: string,
+    operator: string,
+  ): Promise<OpsReviewReport | undefined> {
+    const reportId = await this.#database.raw.begin(async (transaction) => {
+      const updated = await transaction<{ id: string }[]>`
+        UPDATE community.review_reports
+        SET
+          status = ${decision},
+          decision_note = ${note},
+          decided_by = ${operator},
+          decided_at = now(),
+          updated_at = now()
+        WHERE public_id = ${publicId}
+          AND status = 'pending'
+        RETURNING id::text
+      `;
+      if (!updated[0]) return undefined;
+
+      await transaction`
+        INSERT INTO platform.audit_log (
+          action,
+          entity_type,
+          entity_id,
+          before_state,
+          after_state
+        ) VALUES (
+          ${`review_report.${decision}`},
+          'review_report',
+          ${updated[0].id}::uuid,
+          ${JSON.stringify({ status: "pending" })}::jsonb,
+          ${JSON.stringify({ status: decision, decisionNote: note })}::jsonb
+        )
+      `;
+      return updated[0].id;
+    });
+    if (!reportId) return undefined;
+
+    const rows = await this.#database.raw<OpsReviewReportRow[]>`
+      SELECT
+        report.id::text,
+        report.public_id AS "publicId",
+        review.public_id AS "reviewPublicId",
+        branch.public_id AS "branchPublicId",
+        branch.name AS "branchName",
+        review.author_name AS "reviewAuthorName",
+        review.body AS "reviewBody",
+        report.reason,
+        report.detail,
+        (report.reporter_user_id IS NOT NULL) AS "reporterAuthenticated",
+        report.status,
+        report.decision_note AS "decisionNote",
+        report.decided_at AS "decidedAt",
+        report.created_at AS "createdAt"
+      FROM community.review_reports AS report
+      JOIN community.reviews AS review ON review.id = report.review_id
+      JOIN catalog.branches AS branch ON branch.id = review.branch_id
+      WHERE report.id = ${reportId}::uuid
+    `;
+
+    return rows[0] ? mapOpsReviewReport(rows[0]) : undefined;
   }
 }

@@ -1,8 +1,8 @@
 import { randomBytes } from "node:crypto";
 
-const PUBLIC_ID_PATTERN = /^(br|cand|evt|rv)_[A-Za-z0-9_-]{16,32}$/;
+const PUBLIC_ID_PATTERN = /^(br|cand|evt|rv|rr)_[A-Za-z0-9_-]{16,32}$/;
 
-export type PublicIdPrefix = "br" | "cand" | "evt" | "rv";
+export type PublicIdPrefix = "br" | "cand" | "evt" | "rv" | "rr";
 
 export function createUuidV7(now = Date.now()): string {
   if (!Number.isSafeInteger(now) || now < 0 || now > 0xffffffffffff) {

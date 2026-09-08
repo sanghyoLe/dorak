@@ -91,6 +91,22 @@ export interface IngestionCandidate {
 export type ReviewStatus = "published" | "hidden";
 export type ReviewUsageType = "dine_in" | "takeout" | "delivery";
 export type VisitVerification = "self_reported" | "receipt" | "reservation";
+export type ReviewReportReason =
+  | "false_experience"
+  | "undisclosed_interest"
+  | "privacy"
+  | "harassment"
+  | "discrimination"
+  | "threat_safety"
+  | "advertising_spam"
+  | "copyright"
+  | "restaurant_info"
+  | "other";
+export type ReviewReportStatus = "pending" | "resolved" | "dismissed";
+export type ReviewReportDecision = Extract<
+  ReviewReportStatus,
+  "resolved" | "dismissed"
+>;
 
 export interface ReviewSummary {
   usageType?: ReviewUsageType | null;
@@ -120,4 +136,28 @@ export interface OpsReview extends ReviewSummary {
   branchPublicId: string;
   branchName: string;
   status: ReviewStatus;
+}
+
+export interface ReviewReportSubmission {
+  reason: ReviewReportReason;
+  detail: string;
+}
+
+export interface ReviewReportSummary {
+  publicId: string;
+  status: ReviewReportStatus;
+  createdAt: string;
+}
+
+export interface OpsReviewReport extends ReviewReportSummary {
+  reviewPublicId: string;
+  branchPublicId: string;
+  branchName: string;
+  reviewAuthorName: string;
+  reviewBody: string;
+  reason: ReviewReportReason;
+  detail: string;
+  reporterAuthenticated: boolean;
+  decisionNote: string | null;
+  decidedAt: string | null;
 }

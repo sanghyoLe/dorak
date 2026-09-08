@@ -150,6 +150,62 @@ assert.equal(afterCreateResponse.status, 200);
 const afterCreate = (await afterCreateResponse.json()).data;
 assert.equal(afterCreate.reviewCount, before.reviewCount + 1);
 
+const reportPayload = {
+  reason: "false_experience",
+  detail: "자동 점검을 위해 리뷰 신고 접수와 운영자 처리 흐름을 확인합니다.",
+  website: "",
+};
+
+const crossSiteReportResponse = await request(
+  `/api/v1/reviews/${created.publicId}/reports`,
+  {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Origin: "https://untrusted.invalid",
+    },
+    body: JSON.stringify(reportPayload),
+  },
+);
+assert.equal(crossSiteReportResponse.status, 403);
+
+const reportResponse = await request(
+  `/api/v1/reviews/${created.publicId}/reports`,
+  {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Origin: baseOrigin },
+    body: JSON.stringify(reportPayload),
+  },
+);
+assert.equal(reportResponse.status, 201);
+const report = (await reportResponse.json()).data;
+
+const duplicateReportResponse = await request(
+  `/api/v1/reviews/${created.publicId}/reports`,
+  {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Origin: baseOrigin },
+    body: JSON.stringify(reportPayload),
+  },
+);
+assert.equal(duplicateReportResponse.status, 409);
+
+const resolveReportResponse = await request(
+  `/api/v1/ops/reports/${report.publicId}/resolve`,
+  {
+    method: "POST",
+    headers: {
+      ...opsAuthorizationHeader(),
+      "Content-Type": "application/json",
+      Origin: baseOrigin,
+    },
+    body: JSON.stringify({
+      note: "자동 점검 신고를 처리 완료로 기록했습니다.",
+    }),
+  },
+);
+assert.equal(resolveReportResponse.status, 200);
+
 const crossSiteHideResponse = await request(
   `/api/v1/ops/reviews/${created.publicId}/hide`,
   {
@@ -177,5 +233,5 @@ const afterHide = (await afterHideResponse.json()).data;
 assert.equal(afterHide.reviewCount, before.reviewCount);
 
 process.stdout.write(
-  "HTTP smoke passed: search, review trust rules, moderation\n",
+  "HTTP smoke passed: search, review trust rules, reporting, moderation\n",
 );

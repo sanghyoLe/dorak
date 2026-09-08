@@ -253,6 +253,35 @@ export const savedBranches = communitySchema.table(
   ],
 );
 
+export const reviewReports = communitySchema.table(
+  "review_reports",
+  {
+    id: uuid().primaryKey(),
+    publicId: text("public_id").notNull().unique(),
+    reviewId: uuid("review_id")
+      .notNull()
+      .references(() => reviews.id, { onDelete: "cascade" }),
+    reporterUserId: uuid("reporter_user_id").references(() => users.id, {
+      onDelete: "set null",
+    }),
+    reason: text().notNull(),
+    detail: text().notNull(),
+    status: text().notNull().default("pending"),
+    decisionNote: text("decision_note"),
+    decidedBy: text("decided_by"),
+    decidedAt: timestamp("decided_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull(),
+  },
+  (table) => [
+    index("review_reports_status_created_idx").on(
+      table.status,
+      table.createdAt,
+    ),
+    index("review_reports_review_idx").on(table.reviewId, table.createdAt),
+  ],
+);
+
 export const auditLog = platformSchema.table(
   "audit_log",
   {

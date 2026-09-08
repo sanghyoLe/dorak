@@ -6,7 +6,12 @@ import type {
   CandidateStatus,
   IngestionCandidate,
   OpsReview,
+  OpsReviewReport,
   ReviewStatus,
+  ReviewReportDecision,
+  ReviewReportStatus,
+  ReviewReportSubmission,
+  ReviewReportSummary,
   ReviewSubmission,
   ReviewSummary,
 } from "@dorak/domain-types";
@@ -18,7 +23,11 @@ import {
   SYNTHETIC_DEMO_USER,
   SYNTHETIC_REVIEWS,
 } from "./fixtures.js";
-import { DuplicateReviewError, ReviewRateLimitError } from "./review-errors.js";
+import {
+  DuplicateReviewError,
+  DuplicateReviewReportError,
+  ReviewRateLimitError,
+} from "./review-errors.js";
 import type { ReviewerIdentity } from "./reviewer-identity.js";
 
 function normalise(value: string): string {
@@ -32,6 +41,7 @@ export class InMemoryCatalog {
     SYNTHETIC_CANDIDATES.map((candidate) => [candidate.id, { ...candidate }]),
   );
   readonly #reviews: StoredReview[];
+  readonly #reports: StoredReviewReport[] = [];
   readonly #savedBranches = new Map<string, Set<string>>();
 
   constructor() {
@@ -295,6 +305,73 @@ export class InMemoryCatalog {
     return toOpsReview(review);
   }
 
+  createReviewReport(
+    reviewPublicId: string,
+    reporterUserId: string | null,
+    submission: ReviewReportSubmission,
+  ): ReviewReportSummary | undefined {
+    const review = this.#reviews.find(
+      (candidate) => candidate.publicId === reviewPublicId,
+    );
+    if (!review) return undefined;
+
+    if (
+      reporterUserId &&
+      this.#reports.some(
+        (report) =>
+          report.reporterUserId === reporterUserId &&
+          report.reviewPublicId === reviewPublicId &&
+          report.reason === submission.reason,
+      )
+    ) {
+      throw new DuplicateReviewReportError();
+    }
+
+    const report: StoredReviewReport = {
+      publicId: createPublicId("rr"),
+      reviewPublicId: review.publicId,
+      branchPublicId: review.branchPublicId,
+      branchName: review.branchName,
+      reviewAuthorName: review.authorName,
+      reviewBody: review.body,
+      reason: submission.reason,
+      detail: submission.detail,
+      reporterAuthenticated: Boolean(reporterUserId),
+      reporterUserId,
+      status: "pending",
+      decisionNote: null,
+      decidedAt: null,
+      createdAt: new Date().toISOString(),
+    };
+    this.#reports.push(report);
+    return toReviewReportSummary(report);
+  }
+
+  listReviewReports(status: ReviewReportStatus = "pending"): OpsReviewReport[] {
+    return this.#reports
+      .filter((report) => report.status === status)
+      .toSorted((left, right) => right.createdAt.localeCompare(left.createdAt))
+      .map(toOpsReviewReport);
+  }
+
+  decideReviewReport(
+    publicId: string,
+    decision: ReviewReportDecision,
+    note: string,
+    _operator: string,
+  ): OpsReviewReport | undefined {
+    const report = this.#reports.find(
+      (candidate) =>
+        candidate.publicId === publicId && candidate.status === "pending",
+    );
+    if (!report) return undefined;
+
+    report.status = decision;
+    report.decisionNote = note;
+    report.decidedAt = new Date().toISOString();
+    return toOpsReviewReport(report);
+  }
+
   #refreshRating(branchPublicId: string): void {
     const branch = this.#branches.find(
       (candidate) => candidate.publicId === branchPublicId,
@@ -323,6 +400,10 @@ interface StoredReview extends OpsReview {
   reviewerEmail?: string;
 }
 
+interface StoredReviewReport extends OpsReviewReport {
+  reporterUserId: string | null;
+}
+
 function toReviewSummary(review: StoredReview): ReviewSummary {
   return {
     publicId: review.publicId,
@@ -347,6 +428,21 @@ function toOpsReview(review: StoredReview): OpsReview {
   return { ...publicReview };
 }
 
+function toReviewReportSummary(
+  report: StoredReviewReport,
+): ReviewReportSummary {
+  return {
+    publicId: report.publicId,
+    status: report.status,
+    createdAt: report.createdAt,
+  };
+}
+
+function toOpsReviewReport(report: StoredReviewReport): OpsReviewReport {
+  const { reporterUserId: _reporterUserId, ...publicReport } = report;
+  return { ...publicReport };
+}
+
 export {
   SYNTHETIC_BRANCHES,
   SYNTHETIC_CANDIDATES,
@@ -354,5 +450,9 @@ export {
   SYNTHETIC_REVIEWS,
 } from "./fixtures.js";
 export { PostgresCatalog } from "./postgres-catalog.js";
-export { DuplicateReviewError, ReviewRateLimitError } from "./review-errors.js";
+export {
+  DuplicateReviewError,
+  DuplicateReviewReportError,
+  ReviewRateLimitError,
+} from "./review-errors.js";
 export type { ReviewerIdentity } from "./reviewer-identity.js";

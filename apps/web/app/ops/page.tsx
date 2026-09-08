@@ -1,9 +1,14 @@
-import type { IngestionCandidate, OpsReview } from "@dorak/domain-types";
+import type {
+  IngestionCandidate,
+  OpsReview,
+  OpsReviewReport,
+} from "@dorak/domain-types";
 import Link from "next/link";
 import { headers } from "next/headers";
 import { notFound } from "next/navigation";
 
 import { CandidateQueue } from "../../components/candidate-queue";
+import { ReportQueue } from "../../components/report-queue";
 import { ReviewQueue } from "../../components/review-queue";
 import { getCatalog } from "../../server/catalog";
 import { authorizeOps } from "../../server/ops-auth";
@@ -13,6 +18,7 @@ export const dynamic = "force-dynamic";
 interface OpsLoadResult {
   candidates: IngestionCandidate[];
   reviews: OpsReview[];
+  reports: OpsReviewReport[];
   dataAvailable: boolean;
   dataMode: "memory" | "postgres";
 }
@@ -21,13 +27,15 @@ async function loadOpsData(): Promise<OpsLoadResult> {
   const catalog = getCatalog();
 
   try {
-    const [candidates, reviews] = await Promise.all([
+    const [candidates, reviews, reports] = await Promise.all([
       catalog.listCandidates(),
       catalog.listRecentReviews(),
+      catalog.listReviewReports(),
     ]);
     return {
       candidates,
       reviews,
+      reports,
       dataAvailable: true,
       dataMode: catalog.mode,
     };
@@ -37,6 +45,7 @@ async function loadOpsData(): Promise<OpsLoadResult> {
     return {
       candidates: [],
       reviews: [],
+      reports: [],
       dataAvailable: false,
       dataMode: catalog.mode,
     };
@@ -47,7 +56,8 @@ export default async function OpsPage() {
   const authorization = authorizeOps(await headers());
   if (!authorization.authorized) notFound();
 
-  const { candidates, reviews, dataAvailable, dataMode } = await loadOpsData();
+  const { candidates, reviews, reports, dataAvailable, dataMode } =
+    await loadOpsData();
   const dataModeLabel = dataMode === "postgres" ? "PostgreSQL" : "인메모리";
 
   return (
@@ -59,6 +69,7 @@ export default async function OpsPage() {
         </div>
         <nav aria-label="운영 메뉴">
           <a href="#queue">대기열</a>
+          <a href="#reports">신고 검토</a>
           <a href="#reviews">리뷰 관리</a>
           <Link href="/">소비자 웹</Link>
           <Link href="/api/health">데이터 상태</Link>
@@ -80,6 +91,8 @@ export default async function OpsPage() {
         initialCandidates={candidates}
         dataAvailable={dataAvailable}
       />
+
+      <ReportQueue initialReports={reports} dataAvailable={dataAvailable} />
 
       <ReviewQueue initialReviews={reviews} dataAvailable={dataAvailable} />
 

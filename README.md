@@ -67,7 +67,7 @@ MVP에는 영수증·예약 기반 방문 인증이 아직 없다. 따라서 사
 2. 배포 전에 Neon DB에 `pnpm db:migrate`를 실행한다. 합성 `db:seed`는 프리뷰에만 사용하고 실제 서비스 DB에는 넣지 않는다.
 3. Google OAuth 웹 클라이언트에 `https://배포도메인/api/auth/callback/google`을 승인된 리디렉션 URI로 등록한다.
 4. Vercel 프로젝트의 Root Directory를 `apps/web`으로 지정하고 `.env.example`의 서버 환경 변수를 등록한다.
-5. `BETTER_AUTH_URL`은 실제 `https://` 배포 주소로, `DORAK_CONTACT_EMAIL`은 실제 응답 가능한 주소로 설정한다.
+5. `BETTER_AUTH_URL`은 실제 `https://` 배포 주소로 설정한다. 리뷰 문제 신고는 상세 페이지의 앱 내 신고 폼으로 접수한다.
 6. 실데이터를 검수해 넣기 전에는 `DORAK_ALLOW_INDEXING=false`를 유지한다.
 
 Neon Free처럼 저장 공간이 제한된 배포에서는 원본 CSV를 별도로 보관하고, 원격 DB에는 검색에 필요한 정규화 결과만 배치 적재한다.

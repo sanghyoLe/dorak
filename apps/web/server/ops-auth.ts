@@ -1,7 +1,7 @@
 import "server-only";
 
 type OpsAuthorization =
-  | { authorized: true }
+  | { authorized: true; username: string }
   | { authorized: false; reason: "missing-config" | "invalid-credentials" };
 
 function isProtectedDeployment(): boolean {
@@ -42,7 +42,7 @@ function decodeBasicCredentials(
 }
 
 export function authorizeOps(headers: Headers): OpsAuthorization {
-  if (!isProtectedDeployment()) return { authorized: true };
+  if (!isProtectedDeployment()) return { authorized: true, username: "local" };
 
   const expectedUsername = process.env.DORAK_OPS_USERNAME;
   const expectedPassword = process.env.DORAK_OPS_PASSWORD;
@@ -59,7 +59,7 @@ export function authorizeOps(headers: Headers): OpsAuthorization {
     return { authorized: false, reason: "invalid-credentials" };
   }
 
-  return { authorized: true };
+  return { authorized: true, username: credentials.username };
 }
 
 export function opsAuthFailureResponse(

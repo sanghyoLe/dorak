@@ -62,7 +62,6 @@ BETTER_AUTH_SECRET
 BETTER_AUTH_URL
 GOOGLE_CLIENT_ID
 GOOGLE_CLIENT_SECRET
-DORAK_CONTACT_EMAIL
 DORAK_OPS_USERNAME
 DORAK_OPS_PASSWORD
 DORAK_ALLOW_INDEXING
@@ -97,9 +96,9 @@ NEXT_PUBLIC_KAKAO_MAP_APP_KEY
 ```
 
 - production에서 `DORAK_DEMO_AUTH`는 사용되지 않는다. Google OAuth 키가 없으면
-  읽기 전용으로 배포되며 리뷰 작성·계정 로그인을 제공하지 않는다. 연락처가 없으면
-  신고 메일도 비활성화된다. 공개 베타 전에 실제 Google OAuth, 연락처 이메일,
-  redirect URI를 확인한다.
+  읽기 전용으로 배포되며 리뷰 작성·계정 로그인을 제공하지 않는다. 리뷰 문제 신고는
+  로그인 여부와 관계없이 앱 안에서 접수되며 `/ops`의 비공개 신고 대기열로 전달된다.
+  공개 베타 전에 실제 Google OAuth와 redirect URI를 확인한다.
 - 실데이터와 공개 정책 검수가 끝나기 전에는 `DORAK_ALLOW_INDEXING=false`로 둔다.
 - `BETTER_AUTH_SECRET`과 `DORAK_OPS_PASSWORD`는 각각 독립적인 긴 난수로 만든다.
 

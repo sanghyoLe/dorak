@@ -11,3 +11,10 @@ export class ReviewRateLimitError extends Error {
     this.name = "ReviewRateLimitError";
   }
 }
+
+export class DuplicateReviewReportError extends Error {
+  constructor() {
+    super("A report for this review already exists.");
+    this.name = "DuplicateReviewReportError";
+  }
+}

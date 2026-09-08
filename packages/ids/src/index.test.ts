@@ -20,11 +20,14 @@ describe("public IDs", () => {
   it("creates opaque prefixed identifiers", () => {
     const id = createPublicId("br");
     const reviewId = createPublicId("rv");
+    const reportId = createPublicId("rr");
 
     expect(id.startsWith("br_")).toBe(true);
     expect(isPublicId(id)).toBe(true);
     expect(reviewId.startsWith("rv_")).toBe(true);
     expect(isPublicId(reviewId)).toBe(true);
+    expect(reportId.startsWith("rr_")).toBe(true);
+    expect(isPublicId(reportId)).toBe(true);
   });
 
   it("rejects identifiers with unsupported prefixes", () => {

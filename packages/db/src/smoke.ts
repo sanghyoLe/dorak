@@ -16,6 +16,7 @@ try {
       appliedMigrations: number;
       branchTable: string | null;
       reviewTable: string | null;
+      reviewReportsTable: string | null;
       savedBranchTable: string | null;
       postgisInstalled: boolean;
       generatedId: string;
@@ -25,15 +26,17 @@ try {
       (SELECT count(*)::int FROM platform.schema_migrations) AS "appliedMigrations",
       to_regclass('catalog.branches')::text AS "branchTable",
       to_regclass('community.reviews')::text AS "reviewTable",
+      to_regclass('community.review_reports')::text AS "reviewReportsTable",
       to_regclass('community.saved_branches')::text AS "savedBranchTable",
       EXISTS (SELECT 1 FROM pg_extension WHERE extname = 'postgis') AS "postgisInstalled",
       uuidv7()::text AS "generatedId"
   `;
 
   assert(state);
-  assert.equal(state.appliedMigrations, 12);
+  assert.equal(state.appliedMigrations, 13);
   assert.equal(state.branchTable, "catalog.branches");
   assert.equal(state.reviewTable, "community.reviews");
+  assert.equal(state.reviewReportsTable, "community.review_reports");
   assert.equal(state.savedBranchTable, "community.saved_branches");
   assert.equal(state.postgisInstalled, true);
   assert.match(state.generatedId, /^[0-9a-f-]{36}$/);

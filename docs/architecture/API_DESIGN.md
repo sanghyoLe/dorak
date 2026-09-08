@@ -551,11 +551,18 @@ GET    /v1/me/feed
 ### 14.6 신고
 
 ```text
-POST /v1/reports
+POST /v1/reviews/{reviewId}/reports
 GET  /v1/me/reports/{reportId}
 ```
 
 신고 응답은 접수 상태와 결과의 큰 범주만 제공한다. 내부 위험 점수, 제보자 신원, 조사 증거는 공개하지 않는다.
+현재 MVP는 리뷰 신고 접수와 운영자 처리만 제공한다. 운영자는 다음 명령으로 처리 사유를
+필수 입력하고 `resolved` 또는 `dismissed`로 기록한다.
+
+```text
+POST /v1/ops/reports/{reportId}/resolve
+POST /v1/ops/reports/{reportId}/dismiss
+```
 
 ### 14.7 예약
 

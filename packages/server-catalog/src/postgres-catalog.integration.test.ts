@@ -123,6 +123,33 @@ describeWithDatabase("PostgresCatalog integration", () => {
       ),
     ).toBe(true);
 
+    const report = await catalog.createReviewReport(
+      review!.publicId,
+      reviewerId,
+      {
+        reason: "false_experience",
+        detail: "운영 통합 테스트에서 검토가 필요한 신고 사유를 남깁니다.",
+      },
+    );
+    expect(report).toMatchObject({ status: "pending" });
+    expect(await catalog.listReviewReports()).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          publicId: report!.publicId,
+          reviewPublicId: review!.publicId,
+          reporterAuthenticated: true,
+        }),
+      ]),
+    );
+    expect(
+      await catalog.decideReviewReport(
+        report!.publicId,
+        "dismissed",
+        "통합 테스트 신고를 기각 처리했습니다.",
+        "integration",
+      ),
+    ).toMatchObject({ status: "dismissed" });
+
     expect((await catalog.hideReview(review!.publicId))?.status).toBe("hidden");
     expect(await catalog.findBranch(branchPublicId)).toMatchObject({
       rating: null,

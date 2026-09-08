@@ -136,4 +136,38 @@ describe("InMemoryCatalog", () => {
       catalog.createReview(branches[5]!.publicId, reviewer, reviewSubmission),
     ).toThrow(ReviewRateLimitError);
   });
+
+  it("keeps review reports private until an operator decides them", () => {
+    const catalog = new InMemoryCatalog();
+    const review = catalog.listReviews("br_Zk8sD1mP4qR7vT2xN5cA")[0]!;
+
+    const report = catalog.createReviewReport(
+      review.publicId,
+      "01991b38-6800-7000-9000-000000000999",
+      {
+        reason: "false_experience",
+        detail:
+          "리뷰에 실제로 주문한 메뉴와 이용 시점이 적혀 있지 않아 확인이 필요합니다.",
+      },
+    );
+
+    expect(report).toMatchObject({ status: "pending" });
+    expect(catalog.listReviewReports()).toHaveLength(1);
+    expect(catalog.listReviewReports()[0]).toMatchObject({
+      reviewPublicId: review.publicId,
+      detail:
+        "리뷰에 실제로 주문한 메뉴와 이용 시점이 적혀 있지 않아 확인이 필요합니다.",
+      reporterAuthenticated: true,
+    });
+
+    expect(
+      catalog.decideReviewReport(
+        report!.publicId,
+        "resolved",
+        "리뷰 작성자에게 이용 경험 확인을 요청하고 신고를 처리했습니다.",
+        "local",
+      ),
+    ).toMatchObject({ status: "resolved" });
+    expect(catalog.listReviewReports()).toEqual([]);
+  });
 });

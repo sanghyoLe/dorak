@@ -23,6 +23,7 @@ describe("migration files", () => {
       "000010_saved_branches.sql",
       "000011_review_independence.sql",
       "000012_review_usage_type.sql",
+      "000013_review_reports.sql",
     ]);
     expect(
       migrations.every((migration) => migration.checksum.length === 64),
