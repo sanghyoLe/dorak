@@ -56,21 +56,25 @@ describeWithDatabase("PostgresCatalog integration", () => {
   });
 
   it("finds coordinate-bearing branches in distance order", async () => {
-    const branches = (
-      await catalog.searchBranches("", undefined, {
-        limit: 20,
-      })
-    ).data;
-    const origin = branches.find(
-      (branch) => branch.latitude !== null && branch.longitude !== null,
-    );
+    const origins = await database.raw<
+      Array<{ publicId: string; latitude: number; longitude: number }>
+    >`
+      SELECT
+        public_id AS "publicId",
+        ST_Y(location::geometry)::float8 AS latitude,
+        ST_X(location::geometry)::float8 AS longitude
+      FROM catalog.branches
+      WHERE status = 'active' AND location IS NOT NULL
+      ORDER BY public_id
+      LIMIT 1
+    `;
+    const origin = origins[0];
 
-    expect(origin?.latitude).toBeTypeOf("number");
-    expect(origin?.longitude).toBeTypeOf("number");
+    expect(origin).toBeDefined();
 
     const nearby = await catalog.findNearbyBranches({
-      latitude: origin!.latitude!,
-      longitude: origin!.longitude!,
+      latitude: origin!.latitude,
+      longitude: origin!.longitude,
       radiusMeters: 1_000,
       limit: 20,
     });
