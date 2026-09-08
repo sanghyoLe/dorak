@@ -21,6 +21,8 @@ describe("migration files", () => {
       "000008_branch_external_info.sql",
       "000009_branch_discovery_indexes.sql",
       "000010_saved_branches.sql",
+      "000011_review_independence.sql",
+      "000012_review_usage_type.sql",
     ]);
     expect(
       migrations.every((migration) => migration.checksum.length === 64),

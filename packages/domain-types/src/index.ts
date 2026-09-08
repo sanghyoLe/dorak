@@ -89,25 +89,31 @@ export interface IngestionCandidate {
 }
 
 export type ReviewStatus = "published" | "hidden";
+export type ReviewUsageType = "dine_in" | "takeout" | "delivery";
 export type VisitVerification = "self_reported" | "receipt" | "reservation";
 
 export interface ReviewSummary {
+  usageType?: ReviewUsageType | null;
   publicId: string;
   authorName: string;
   rating: number;
   body: string;
   visitedOn: string | null;
   identityVerified: boolean;
+  /** Author declaration, not independent verification; absent for legacy reviews. */
+  independentVisitAttested?: boolean | null;
   visitVerification: VisitVerification;
   createdAt: string;
 }
 
 export interface ReviewSubmission {
+  usageType: ReviewUsageType;
   authorName: string;
   rating: number;
   body: string;
   visitedOn: string;
   visitAttested: true;
+  independentVisitAttested: true;
 }
 
 export interface OpsReview extends ReviewSummary {

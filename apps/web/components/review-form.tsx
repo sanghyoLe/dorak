@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import type { FormEvent } from "react";
 import { useRef, useState } from "react";
+import { REVIEW_USAGE_LABELS } from "../lib/review-usage";
 
 type SubmissionState = "idle" | "submitting" | "success" | "error";
 
@@ -30,6 +31,7 @@ export function ReviewForm({
   const router = useRouter();
   const formRef = useRef<HTMLFormElement>(null);
   const [rating, setRating] = useState(0);
+  const [usageType, setUsageType] = useState("");
   const [state, setState] = useState<SubmissionState>("idle");
   const [message, setMessage] = useState("");
 
@@ -38,10 +40,10 @@ export function ReviewForm({
     return (
       <div className="review-login-required" id="write-review">
         <p>리뷰를 쓰려면 계정 확인이 필요합니다.</p>
-        <h3>로그인 후 방문 경험을 남겨주세요.</h3>
+        <h3>로그인 후 식사 경험을 남겨주세요.</h3>
         <p>
-          계정 로그인은 작성자의 실재성을 확인합니다. 식당 방문 여부는 별도로
-          직접 확인받습니다.
+          매장 식사·포장·배달 모두 남길 수 있습니다. 로그인은 본인 인증이나 이용
+          인증이 아니며, 식사 경험과 협찬 여부는 작성자가 직접 확인합니다.
         </p>
         <Link href={`/signin?callbackUrl=${encodeURIComponent(callbackUrl)}`}>
           <LogIn aria-hidden="true" size={18} strokeWidth={2} />
@@ -70,7 +72,10 @@ export function ReviewForm({
             rating: Number(form.get("rating")),
             body: form.get("body"),
             visitedOn: form.get("visitedOn"),
+            usageType: form.get("usageType"),
             visitAttested: form.get("visitAttested") === "on",
+            independentVisitAttested:
+              form.get("independentVisitAttested") === "on",
             website: form.get("website"),
           }),
         },
@@ -85,6 +90,7 @@ export function ReviewForm({
 
       formRef.current?.reset();
       setRating(0);
+      setUsageType("");
       setState("success");
       setMessage("리뷰가 등록되었습니다. 평점과 리뷰 목록에 반영했습니다.");
       router.refresh();
@@ -129,11 +135,32 @@ export function ReviewForm({
         </label>
 
         <label>
-          방문일
+          이용일
           <input name="visitedOn" type="date" max={today} required />
           <small>실제로 음식을 먹은 날짜를 입력하세요.</small>
         </label>
       </div>
+
+      <label className="review-body-field">
+        이용 방식
+        <select
+          name="usageType"
+          disabled={state === "submitting"}
+          value={usageType}
+          onChange={(event) => setUsageType(event.target.value)}
+          required
+        >
+          <option value="" disabled>
+            이용 방식 선택
+          </option>
+          {Object.entries(REVIEW_USAGE_LABELS).map(([value, label]) => (
+            <option key={value} value={value}>
+              {label}
+            </option>
+          ))}
+        </select>
+        <small>배달·포장은 주문한 지점이 맞는지 확인해 주세요.</small>
+      </label>
 
       <fieldset className="rating-fieldset">
         <legend>전체 평점</legend>
@@ -157,13 +184,17 @@ export function ReviewForm({
       </fieldset>
 
       <label className="review-body-field">
-        방문 경험
+        식사 경험
         <textarea
           name="body"
           minLength={20}
           maxLength={1000}
           rows={7}
-          placeholder={`${branchName}에서 먹은 메뉴, 맛, 서비스와 분위기를 구체적으로 적어주세요.`}
+          placeholder={
+            usageType === "delivery" || usageType === "takeout"
+              ? `${branchName}에서 주문한 메뉴, 맛, 온도와 포장 상태를 적어주세요.`
+              : `${branchName}에서 먹은 메뉴, 맛, 서비스와 분위기를 구체적으로 적어주세요.`
+          }
           required
         />
         <small>
@@ -171,12 +202,34 @@ export function ReviewForm({
         </small>
       </label>
 
+      {usageType === "delivery" || usageType === "takeout" ? (
+        <p>
+          경험하지 않은 매장 서비스·분위기는 평가하지 마세요. 배달비·배달 지연은
+          음식에 대한 평가와 구분해서 적어주세요.
+        </p>
+      ) : null}
+
       <label className="review-attestation">
         <input name="visitAttested" type="checkbox" required />
         <span>
-          이 식당에 직접 방문해 음식을 먹었으며, 개인적인 경험을 작성했습니다.
+          이 지점의 음식을 직접 먹었으며, 개인적인 경험을 작성했습니다.
         </span>
       </label>
+
+      <label className="review-attestation">
+        <input
+          name="independentVisitAttested"
+          type="checkbox"
+          required
+          aria-describedby="independent-visit-help"
+        />
+        <span>협찬·리뷰 대가·식당과의 이해관계가 없습니다.</span>
+      </label>
+      <p id="independent-visit-help">
+        식사 협찬이나 리뷰를 조건으로 한 금전·할인 혜택을 받았거나, 본인·가족이
+        운영하거나 근무하는 식당은 평가할 수 없습니다. 일반 고객에게 제공되는
+        할인은 괜찮습니다. <Link href="/review-policy">리뷰 원칙</Link>
+      </p>
 
       <label className="review-honeypot" aria-hidden="true">
         웹사이트

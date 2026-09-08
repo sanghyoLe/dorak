@@ -19,6 +19,14 @@ const targets = [
   { name: "web-1440", url: "http://localhost:3000", width: 1440, height: 1000 },
   { name: "detail-320", url: detailUrl, width: 320, height: 900 },
   { name: "detail-375", url: detailUrl, width: 375, height: 900 },
+  { name: "detail-414", url: detailUrl, width: 414, height: 900 },
+  { name: "detail-768", url: detailUrl, width: 768, height: 1000 },
+  ...[320, 375, 414, 768].map((width) => ({
+    name: `review-policy-${width}`,
+    url: "http://localhost:3000/review-policy",
+    width,
+    height: 1000,
+  })),
   { name: "detail-1440", url: detailUrl, width: 1440, height: 1000 },
   {
     name: "ops-375",

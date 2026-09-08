@@ -265,6 +265,8 @@ export class InMemoryCatalog {
       body: submission.body,
       visitedOn: submission.visitedOn,
       identityVerified: reviewer.identityVerified,
+      independentVisitAttested: submission.independentVisitAttested,
+      usageType: submission.usageType,
       visitVerification: "self_reported",
       status: "published",
       createdAt: new Date().toISOString(),
@@ -329,6 +331,8 @@ function toReviewSummary(review: StoredReview): ReviewSummary {
     body: review.body,
     visitedOn: review.visitedOn,
     identityVerified: review.identityVerified,
+    independentVisitAttested: review.independentVisitAttested ?? null,
+    usageType: review.usageType ?? null,
     visitVerification: review.visitVerification,
     createdAt: review.createdAt,
   };

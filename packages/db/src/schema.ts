@@ -214,6 +214,8 @@ export const reviews = communitySchema.table(
     body: text().notNull(),
     visitedOn: date("visited_on").notNull(),
     visitAttested: boolean("visit_attested").notNull(),
+    independentVisitAttested: boolean("independent_visit_attested"),
+    usageType: text("usage_type"),
     identityVerified: boolean("identity_verified").notNull(),
     visitVerification: text("visit_verification")
       .notNull()

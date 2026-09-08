@@ -1,4 +1,5 @@
 import type { ReviewSubmission } from "@dorak/domain-types";
+import { isReviewUsageType } from "../lib/review-usage";
 
 const DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
 const LINK_PATTERN = /(?:https?:\/\/|www\.)/iu;
@@ -41,6 +42,13 @@ export function validateReviewSubmission(
   }
 
   const candidate = input as Record<string, unknown>;
+  if (!isReviewUsageType(candidate.usageType)) {
+    return {
+      ok: false,
+      code: "INVALID_USAGE_TYPE",
+      message: "매장 식사·포장·배달 중 이용 방식을 선택해 주세요.",
+    };
+  }
   if (typeof candidate.website === "string" && candidate.website.trim()) {
     return {
       ok: false,
@@ -93,7 +101,7 @@ export function validateReviewSubmission(
     return {
       ok: false,
       code: "INVALID_VISIT_DATE",
-      message: "오늘 또는 이전의 실제 방문일을 입력해 주세요.",
+      message: "오늘 또는 이전의 실제 이용일을 입력해 주세요.",
     };
   }
 
@@ -101,18 +109,29 @@ export function validateReviewSubmission(
     return {
       ok: false,
       code: "VISIT_ATTESTATION_REQUIRED",
-      message: "직접 방문해 음식을 먹었다는 확인이 필요합니다.",
+      message: "이 지점의 음식을 직접 먹었다는 확인이 필요합니다.",
+    };
+  }
+
+  if (candidate.independentVisitAttested !== true) {
+    return {
+      ok: false,
+      code: "INDEPENDENT_VISIT_REQUIRED",
+      message:
+        "협찬·리뷰 대가·식당과의 이해관계가 없는 식사 경험만 등록할 수 있습니다.",
     };
   }
 
   return {
     ok: true,
     value: {
+      usageType: candidate.usageType,
       authorName,
       rating,
       body,
       visitedOn,
       visitAttested: true,
+      independentVisitAttested: true,
     },
   };
 }

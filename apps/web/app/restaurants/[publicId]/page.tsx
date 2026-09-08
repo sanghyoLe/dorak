@@ -10,9 +10,16 @@ import { SiteFooter } from "../../../components/site-footer";
 import { SiteHeader } from "../../../components/site-header";
 import { findBranch, listBranchReviews } from "../../../server/catalog";
 import { getViewer } from "../../../server/viewer";
+import {
+  REVIEW_USAGE_LABELS,
+  filterReviewsByUsage,
+  parseReviewUsageFilter,
+  summarizeReviewUsage,
+} from "../../../lib/review-usage";
 
 type BranchPageProps = Readonly<{
   params: Promise<{ publicId: string }>;
+  searchParams: Promise<{ usage?: string | string[] }>;
 }>;
 
 export const dynamic = "force-dynamic";
@@ -29,7 +36,7 @@ export async function generateMetadata({
 
   return {
     title: branch.name,
-    description: `${branch.neighborhood} ${branch.cuisineLabel} 식당 ${branch.name}의 정보와 방문 리뷰`,
+    description: `${branch.neighborhood} ${branch.cuisineLabel} 식당 ${branch.name}의 정보와 식사 리뷰`,
   };
 }
 
@@ -55,7 +62,10 @@ function phoneHref(phone: string): string {
   return `tel:${phone.replace(/[^0-9+]/g, "")}`;
 }
 
-export default async function BranchPage({ params }: BranchPageProps) {
+export default async function BranchPage({
+  params,
+  searchParams,
+}: BranchPageProps) {
   const { publicId } = await params;
   const [branch, reviews, viewer] = await Promise.all([
     findBranch(publicId),
@@ -64,6 +74,9 @@ export default async function BranchPage({ params }: BranchPageProps) {
   ]);
 
   if (!branch) notFound();
+  const usageFilter = parseReviewUsageFilter((await searchParams).usage);
+  const visibleReviews = filterReviewsByUsage(reviews, usageFilter);
+  const usageSummary = summarizeReviewUsage(reviews);
 
   return (
     <>
@@ -148,24 +161,56 @@ export default async function BranchPage({ params }: BranchPageProps) {
             >
               <header className="review-section__header">
                 <div>
-                  <h2 id="reviews-title">리뷰 {reviews.length}건</h2>
+                  <h2 id="reviews-title">리뷰 {visibleReviews.length}건</h2>
                 </div>
-                <p>평점은 공개 리뷰의 단순 평균입니다.</p>
+                <p>상단 평점은 이용 방식을 합친 전체 평균입니다.</p>
               </header>
 
-              {reviews.length ? (
+              <nav
+                className="review-usage-filter"
+                aria-label="이용 방식별 리뷰와 평점"
+              >
+                <Link
+                  href={`/restaurants/${publicId}#reviews`}
+                  aria-current={usageFilter === "all" ? "page" : undefined}
+                  scroll={false}
+                >
+                  전체 {reviews.length}건
+                </Link>
+                {usageSummary.map((summary) => (
+                  <Link
+                    key={summary.usage}
+                    href={`/restaurants/${publicId}?usage=${summary.usage}#reviews`}
+                    aria-current={
+                      usageFilter === summary.usage ? "page" : undefined
+                    }
+                    scroll={false}
+                  >
+                    {summary.label} ·{" "}
+                    {summary.rating === null
+                      ? "평가 전"
+                      : `${summary.rating.toFixed(1)}점`}{" "}
+                    · {summary.count}건
+                  </Link>
+                ))}
+              </nav>
+              <p className="review-usage-note">
+                방식별 평점은 해당 공개 리뷰의 평균입니다. 리뷰가 적으면 개별
+                경험도 함께 읽어주세요.
+              </p>
+
+              {visibleReviews.length ? (
                 <ol className="review-list">
-                  {reviews.map((review) => (
+                  {visibleReviews.map((review) => (
                     <li key={review.publicId}>
                       <article className="review-entry">
                         <header>
                           <div>
                             <strong>{review.authorName}</strong>
                             <span>
-                              {formatKoreanDate(
-                                review.visitedOn ?? review.createdAt,
-                              )}{" "}
-                              방문
+                              {review.visitedOn
+                                ? `${formatKoreanDate(review.visitedOn)} 이용`
+                                : "이용일 미입력"}
                             </span>
                           </div>
                           <p>
@@ -177,6 +222,11 @@ export default async function BranchPage({ params }: BranchPageProps) {
                           className="review-trust-labels"
                           aria-label="리뷰 신뢰 정보"
                         >
+                          <span>
+                            {review.usageType
+                              ? REVIEW_USAGE_LABELS[review.usageType]
+                              : "이용 방식 미확인"}
+                          </span>
                           <span
                             data-level={
                               review.identityVerified ? "account" : "sample"
@@ -188,20 +238,29 @@ export default async function BranchPage({ params }: BranchPageProps) {
                               strokeWidth={2}
                             />
                             {review.identityVerified
-                              ? "계정 확인"
-                              : "예시 리뷰"}
+                              ? "이메일 확인"
+                              : "이메일 미확인"}
                           </span>
                           <span>
                             {review.visitVerification === "self_reported"
-                              ? "방문일 자기입력"
-                              : "방문 확인"}
+                              ? "이용일 자기입력"
+                              : review.visitVerification === "receipt"
+                                ? "영수증 확인"
+                                : "예약 내역 확인"}
+                          </span>
+                          <span>
+                            {review.independentVisitAttested === true
+                              ? "협찬·관계 없음 · 작성자 확인"
+                              : "이해관계 미확인"}
                           </span>
                         </div>
                         <p className="review-entry__body">{review.body}</p>
                         <footer>
                           <span>
-                            {formatKoreanDate(review.createdAt)} 작성 · 방문
-                            확인 자료 없음
+                            {formatKoreanDate(review.createdAt)} 작성
+                            {review.visitVerification === "self_reported"
+                              ? " · 이용 증빙 미확인"
+                              : null}
                           </span>
                           {reviewContactEmail ? (
                             <a
@@ -217,8 +276,12 @@ export default async function BranchPage({ params }: BranchPageProps) {
                 </ol>
               ) : (
                 <div className="review-empty">
-                  <strong>아직 공개된 리뷰가 없습니다.</strong>
-                  <p>직접 방문했다면 첫 기록을 남겨주세요.</p>
+                  <strong>
+                    {usageFilter === "all"
+                      ? "아직 공개된 리뷰가 없습니다."
+                      : "이 이용 방식의 리뷰가 없습니다."}
+                  </strong>
+                  <p>직접 먹어봤다면 첫 기록을 남겨주세요.</p>
                 </div>
               )}
             </section>
@@ -358,8 +421,9 @@ export default async function BranchPage({ params }: BranchPageProps) {
           <aside className="branch-data-note" aria-labelledby="data-note-title">
             <h2 id="data-note-title">리뷰 기준</h2>
             <p>
-              ‘계정 확인’은 작성자가 로그인한 계정임을 뜻합니다. ‘방문일
-              자기입력’은 영수증이나 예약 내역을 확인했다는 의미가 아닙니다.
+              ‘이메일 확인’은 본인 인증이나 이용 인증이 아닙니다. 이용
+              방식·이용일과 협찬·관계 여부는 작성자가 직접 확인한 내용이며,
+              도락이 증빙을 확인했다는 뜻은 아닙니다.
             </p>
             <dl>
               <div>

@@ -31,7 +31,7 @@ try {
   `;
 
   assert(state);
-  assert.equal(state.appliedMigrations, 10);
+  assert.equal(state.appliedMigrations, 12);
   assert.equal(state.branchTable, "catalog.branches");
   assert.equal(state.reviewTable, "community.reviews");
   assert.equal(state.savedBranchTable, "community.saved_branches");

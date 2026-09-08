@@ -2473,3 +2473,77 @@ button:disabled {
     transition-duration: 0.01ms;
   }
 }
+
+/* Hallmark · component: review usage · theme: existing studied-DNA
+ * pre-emit critique: P5 H4 E4 S5 R5 V4 · no new motion or palette
+ */
+.review-form select {
+  display: block;
+  width: 100%;
+  min-width: 0;
+  min-height: 3rem;
+  margin-block-start: var(--space-2xs);
+  padding: var(--space-xs) var(--space-sm);
+  border: var(--rule-hair) solid var(--color-rule-strong);
+  border-radius: 0;
+  background: var(--color-paper);
+  color: var(--color-ink);
+  font: inherit;
+}
+
+.review-form select:hover {
+  border-color: var(--color-ink-soft);
+}
+
+.review-form select:active {
+  border-color: var(--color-clay-deep);
+}
+
+.review-form select:user-invalid {
+  border-color: var(--color-danger);
+}
+
+.review-form select:focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 2px;
+}
+
+.review-form select:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.review-usage-filter {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2xs) var(--space-sm);
+  margin-block: var(--space-sm);
+}
+
+.review-usage-filter a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 3rem;
+  max-width: 100%;
+  border-block-end: var(--rule-hair) solid var(--color-rule);
+  color: var(--color-ink-soft);
+  font-size: var(--text-sm);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.review-usage-filter a:hover,
+.review-usage-filter a[aria-current="page"] {
+  color: var(--color-clay-deep);
+  border-color: var(--color-clay-deep);
+}
+
+.review-usage-filter a[aria-current="page"] {
+  font-weight: 800;
+}
+
+.review-usage-note {
+  color: var(--color-ink-soft);
+  font-size: var(--text-sm);
+}

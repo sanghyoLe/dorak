@@ -71,6 +71,8 @@ interface ReviewRow {
   body: string;
   visitedOn: Date | string | null;
   identityVerified: boolean;
+  independentVisitAttested: boolean | null;
+  usageType: ReviewSummary["usageType"];
   visitVerification: "self_reported" | "receipt" | "reservation";
   createdAt: Date | string;
 }
@@ -161,6 +163,8 @@ function mapReview(row: ReviewRow): ReviewSummary {
     body: row.body,
     visitedOn: serializePostgresDate(row.visitedOn),
     identityVerified: row.identityVerified,
+    independentVisitAttested: row.independentVisitAttested,
+    usageType: row.usageType ?? null,
     visitVerification: row.visitVerification,
     createdAt: serializePostgresTimestamp(row.createdAt),
   };
@@ -646,6 +650,8 @@ export class PostgresCatalog {
         review.body,
         review.visited_on AS "visitedOn",
         review.identity_verified AS "identityVerified",
+        review.independent_visit_attested AS "independentVisitAttested",
+        review.usage_type AS "usageType",
         review.visit_verification AS "visitVerification",
         review.created_at AS "createdAt"
       FROM community.reviews AS review
@@ -700,6 +706,8 @@ export class PostgresCatalog {
             body,
             visited_on,
             visit_attested,
+            independent_visit_attested,
+            usage_type,
             identity_verified,
             visit_verification
           )
@@ -712,6 +720,8 @@ export class PostgresCatalog {
             ${submission.body},
             ${submission.visitedOn}::date,
             ${submission.visitAttested},
+            ${submission.independentVisitAttested},
+            ${submission.usageType},
             ${reviewer.identityVerified},
             'self_reported'
           FROM catalog.branches AS branch
@@ -724,6 +734,8 @@ export class PostgresCatalog {
             body,
             visited_on AS "visitedOn",
             identity_verified AS "identityVerified",
+            independent_visit_attested AS "independentVisitAttested",
+            usage_type AS "usageType",
             visit_verification AS "visitVerification",
             created_at AS "createdAt"
         `;
@@ -758,6 +770,8 @@ export class PostgresCatalog {
         review.body,
         review.visited_on AS "visitedOn",
         review.identity_verified AS "identityVerified",
+        review.independent_visit_attested AS "independentVisitAttested",
+        review.usage_type AS "usageType",
         review.visit_verification AS "visitVerification",
         review.status,
         review.created_at AS "createdAt"
@@ -811,6 +825,8 @@ export class PostgresCatalog {
         review.body,
         review.visited_on AS "visitedOn",
         review.identity_verified AS "identityVerified",
+        review.independent_visit_attested AS "independentVisitAttested",
+        review.usage_type AS "usageType",
         review.visit_verification AS "visitVerification",
         review.status,
         review.created_at AS "createdAt"

@@ -97,7 +97,9 @@ describeWithDatabase("PostgresCatalog integration", () => {
         rating: 5,
         body: "숯불 향이 선명했고 채소와 고기의 구성이 좋아 다시 방문하고 싶습니다.",
         visitedOn: "2026-09-02",
+        usageType: "delivery",
         visitAttested: true,
+        independentVisitAttested: true,
       },
     );
 
@@ -105,6 +107,8 @@ describeWithDatabase("PostgresCatalog integration", () => {
       rating: 5,
       identityVerified: false,
       visitVerification: "self_reported",
+      independentVisitAttested: true,
+      usageType: "delivery",
     });
     expect(await catalog.findBranch(branchPublicId)).toMatchObject({
       rating: 5,

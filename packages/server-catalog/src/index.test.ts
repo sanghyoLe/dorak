@@ -7,11 +7,13 @@ import {
 } from "./index.js";
 
 const reviewSubmission = {
+  usageType: "delivery" as const,
   authorName: "도락테스터",
   rating: 5,
   body: "숯불 향과 제철 채소의 조합이 좋았고 저녁에 다시 방문하고 싶습니다.",
   visitedOn: "2026-09-02",
   visitAttested: true as const,
+  independentVisitAttested: true as const,
 };
 
 describe("InMemoryCatalog", () => {
@@ -73,6 +75,16 @@ describe("InMemoryCatalog", () => {
     expect(catalog.reviewCandidate(candidate!.id, "rejected")).toBeUndefined();
   });
 
+  it("does not backfill declarations on existing reviews", () => {
+    const catalog = new InMemoryCatalog();
+    const reviews = catalog.listReviews("br_Zk8sD1mP4qR7vT2xN5cA");
+    expect(reviews.length).toBeGreaterThan(0);
+    expect(reviews.every((review) => review.usageType === null)).toBe(true);
+    expect(
+      reviews.every((review) => review.independentVisitAttested === null),
+    ).toBe(true);
+  });
+
   it("publishes one review per account and refreshes the public score", () => {
     const catalog = new InMemoryCatalog();
     const publicId = "br_L3nF8wQ2cV6jH9pB4sYk";
@@ -84,6 +96,12 @@ describe("InMemoryCatalog", () => {
     const review = catalog.createReview(publicId, reviewer, reviewSubmission);
 
     expect(review?.visitVerification).toBe("self_reported");
+    expect(review?.independentVisitAttested).toBe(true);
+    expect(review?.usageType).toBe("delivery");
+    expect(catalog.listReviews(publicId)[0]?.usageType).toBe("delivery");
+    expect(catalog.listReviews(publicId)[0]?.independentVisitAttested).toBe(
+      true,
+    );
     expect(catalog.findBranch(publicId)).toMatchObject({
       rating: 5,
       reviewCount: 1,
@@ -92,7 +110,10 @@ describe("InMemoryCatalog", () => {
       catalog.createReview(publicId, reviewer, reviewSubmission),
     ).toThrow("one review per branch");
 
-    expect(catalog.hideReview(review!.publicId)?.status).toBe("hidden");
+    expect(catalog.hideReview(review!.publicId)).toMatchObject({
+      status: "hidden",
+      independentVisitAttested: true,
+    });
     expect(catalog.findBranch(publicId)).toMatchObject({
       rating: null,
       reviewCount: 0,

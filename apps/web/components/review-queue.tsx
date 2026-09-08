@@ -4,6 +4,7 @@ import type { OpsReview } from "@dorak/domain-types";
 import { EyeOff, ShieldCheck } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
+import { REVIEW_USAGE_LABELS } from "../lib/review-usage";
 
 export function ReviewQueue({
   initialReviews,
@@ -73,18 +74,29 @@ export function ReviewQueue({
                 </header>
                 <div className="ops-review-trust">
                   <span>
+                    {review.usageType
+                      ? REVIEW_USAGE_LABELS[review.usageType]
+                      : "이용 방식 미확인"}
+                  </span>
+                  <span>
                     <ShieldCheck aria-hidden="true" size={14} strokeWidth={2} />
-                    {review.identityVerified ? "계정 확인" : "예시 계정"}
+                    {review.identityVerified ? "이메일 확인" : "이메일 미확인"}
                   </span>
                   <span>
                     {review.visitVerification === "self_reported"
-                      ? "방문일 자기입력"
-                      : "방문 확인"}
+                      ? "이용일 자기입력"
+                      : review.visitVerification === "receipt"
+                        ? "영수증 확인"
+                        : "예약 내역 확인"}
                   </span>
                 </div>
                 <p>{review.body}</p>
                 <footer>
-                  <span>{review.visitedOn ?? "방문일 없음"} 방문</span>
+                  <span>
+                    {review.visitedOn
+                      ? `${review.visitedOn} 이용`
+                      : "이용일 미입력"}
+                  </span>
                   <button
                     type="button"
                     disabled={pendingId !== null || !dataAvailable}
