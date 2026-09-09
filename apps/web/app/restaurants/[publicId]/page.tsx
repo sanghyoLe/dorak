@@ -106,6 +106,9 @@ export default async function BranchPage({
           </p>
           <h1>{branch.name}</h1>
           <div className="branch-heading__actions">
+            <a className="branch-write-link" href="#write-review">
+              리뷰 쓰기
+            </a>
             <SavedBranchButton publicId={branch.publicId} />
           </div>
           {branch.provenance === "synthetic" ? (

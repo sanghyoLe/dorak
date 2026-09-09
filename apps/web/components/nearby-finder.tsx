@@ -11,6 +11,7 @@ type Position = Readonly<{ latitude: number; longitude: number }>;
 const RADIUS_OPTIONS = [1_000, 3_000, 5_000, 10_000] as const;
 
 function formatDistance(distanceMeters: number): string {
+  if (distanceMeters < 10) return "10m 미만";
   if (distanceMeters < 1_000) {
     return `${Math.max(10, Math.round(distanceMeters / 10) * 10)}m`;
   }
@@ -45,6 +46,7 @@ export function NearbyFinder() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         cache: "no-store",
+        signal: AbortSignal.timeout(15_000),
         body: JSON.stringify({ ...nextPosition, radiusMeters: nextRadius }),
       });
       const payload = (await response.json().catch(() => ({}))) as {
@@ -68,9 +70,11 @@ export function NearbyFinder() {
     } catch (error) {
       setState("error");
       setMessage(
-        error instanceof Error
-          ? error.message
-          : "가까운 식당을 찾지 못했습니다.",
+        error instanceof Error && error.name === "TimeoutError"
+          ? "식당을 찾는 데 시간이 오래 걸렸습니다. 다시 시도해 주세요."
+          : error instanceof Error
+            ? error.message
+            : "가까운 식당을 찾지 못했습니다.",
       );
     }
   }
@@ -112,7 +116,7 @@ export function NearbyFinder() {
     <section className="nearby-finder" aria-labelledby="nearby-title">
       <header className="nearby-finder__heading">
         <h1 id="nearby-title">내 주변 식당</h1>
-        <p>현재 위치에서 가까운 식당을 거리순으로 찾습니다.</p>
+        <p>가까운 식당 최대 20곳을 찾습니다. 거리는 직선 기준입니다.</p>
       </header>
 
       <div className="nearby-finder__controls">
@@ -188,6 +192,20 @@ export function NearbyFinder() {
             </li>
           ))}
         </ol>
+      ) : null}
+
+      {state === "error" ? (
+        <div className="nearby-finder__empty">
+          {position ? (
+            <button
+              type="button"
+              onClick={() => fetchNearby(position, radiusMeters)}
+            >
+              다시 찾기
+            </button>
+          ) : null}
+          <Link href="/r">지역·음식으로 찾기</Link>
+        </div>
       ) : null}
 
       {state === "success" && branches.length === 0 ? (

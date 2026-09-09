@@ -22,6 +22,14 @@ assert.ok(nearbyOrigin, "visual smoke requires a coordinate-bearing branch");
 const detailUrl = `${baseUrl}/restaurants/${detailBranch.publicId}`;
 
 const targets = [
+  ...["/r", "/signin"].flatMap((path) =>
+    [320, 375, 414, 768].map((width) => ({
+      name: `${path.slice(1)}-${width}`,
+      url: `${baseUrl}${path}`,
+      width,
+      height: 1000,
+    })),
+  ),
   { name: "web-320", url: baseUrl, width: 320, height: 900 },
   { name: "web-375", url: baseUrl, width: 375, height: 900 },
   { name: "web-414", url: baseUrl, width: 414, height: 900 },
@@ -111,7 +119,12 @@ try {
         longitude: nearbyOrigin.longitude,
       });
     }
-    const response = await page.goto(target.url, { waitUntil: "networkidle0" });
+    const response = await page.goto(target.url, {
+      waitUntil: target.url.endsWith("/signin")
+        ? "domcontentloaded"
+        : "networkidle0",
+    });
+    await page.evaluate(() => document.fonts.ready);
     assert.equal(
       response?.status(),
       200,
@@ -127,7 +140,7 @@ try {
       );
       assert.equal(
         firstDistance,
-        "10m",
+        "10m 미만",
         `${target.name}: nearest result drifted`,
       );
     }

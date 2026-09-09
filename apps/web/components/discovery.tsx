@@ -569,6 +569,12 @@ export function Discovery({
     <>
       {mode === "home" ? (
         <section className="home-portal" aria-labelledby="home-title">
+          <header className="home-index__masthead">
+            <div className="home-index__heading">
+              <h1 id="home-title">어디서 먹을까요?</h1>
+              <p>동네와 메뉴로 찾고, 먹어본 사람들의 리뷰를 확인하세요.</p>
+            </div>
+          </header>
           <BranchSearchForm
             className="home-search"
             draftQuery={draftQuery}
@@ -585,23 +591,13 @@ export function Discovery({
             현재 위치에서 찾기
           </Link>
 
-          <header className="home-index__masthead">
-            <div className="home-index__heading">
-              <h1 id="home-title">
-                서울 식당 {(totalCount ?? resultTotal).toLocaleString("ko-KR")}
-                곳
-              </h1>
-              <p>지역과 음식, 식당 이름으로 찾아보세요.</p>
-            </div>
-          </header>
-
           <div className="portal-rails">
             <section
               className="portal-rail"
               aria-labelledby="popular-location-title"
             >
               <div className="portal-rail__heading">
-                <h2 id="popular-location-title">식당이 많은 지역</h2>
+                <h2 id="popular-location-title">지역으로 찾기</h2>
                 <span>{locations.length.toLocaleString("ko-KR")}개 지역</span>
               </div>
               <div className="portal-link-grid">
@@ -624,7 +620,7 @@ export function Discovery({
               aria-labelledby="popular-cuisine-title"
             >
               <div className="portal-rail__heading">
-                <h2 id="popular-cuisine-title">음식 장르</h2>
+                <h2 id="popular-cuisine-title">뭐 먹을까요?</h2>
                 <span>서울 전체</span>
               </div>
               <div className="portal-link-grid portal-link-grid--cuisine">
@@ -648,7 +644,7 @@ export function Discovery({
               aria-labelledby="home-preview-title"
             >
               <div className="home-index__preview-heading">
-                <h2 id="home-preview-title">식당 목록</h2>
+                <h2 id="home-preview-title">서울 식당 둘러보기</h2>
                 <Link href="/r">
                   전체 보기
                   <ChevronRight aria-hidden="true" size={16} strokeWidth={2} />
@@ -667,8 +663,8 @@ export function Discovery({
                       </span>
                       <span className="home-index__preview-meta">
                         {branch.rating !== null
-                          ? branch.rating.toFixed(1)
-                          : `${branch.reviewCount}건`}
+                          ? `${branch.rating.toFixed(1)} · 리뷰 ${branch.reviewCount}건`
+                          : "리뷰 없음"}
                         <ChevronRight
                           aria-hidden="true"
                           size={16}

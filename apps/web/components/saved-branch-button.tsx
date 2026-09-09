@@ -114,11 +114,19 @@ export function SavedBranchButton({
     setMessage(null);
 
     if (source === "local") {
-      const next = readLocalSaved();
-      if (nextSaved) next.add(publicId);
-      else next.delete(publicId);
-      writeLocalSaved(next);
-      setState("idle");
+      try {
+        const next = readLocalSaved();
+        if (nextSaved) next.add(publicId);
+        else next.delete(publicId);
+        writeLocalSaved(next);
+        setState("idle");
+      } catch {
+        setSaved(!nextSaved);
+        setState("error");
+        setMessage(
+          "기기에 저장하지 못했습니다. 브라우저의 저장 공간 설정을 확인해 주세요.",
+        );
+      }
       return;
     }
 
@@ -132,7 +140,11 @@ export function SavedBranchButton({
         else next.delete(publicId);
         writeLocalSaved(next);
         setSource("local");
-        setMessage("이 기기에 저장했습니다. 로그인하면 계정에 이어집니다.");
+        setMessage(
+          nextSaved
+            ? "이 기기에 저장했습니다. 로그인하면 계정에 이어집니다."
+            : "이 기기의 저장 목록에서 삭제했습니다.",
+        );
         setState("idle");
         return;
       }

@@ -26,7 +26,7 @@ export default async function HomePage() {
 
   return (
     <>
-      <SiteHeader />
+      <SiteHeader home />
 
       <main id="main-content" className="page-shell home-page">
         <Discovery

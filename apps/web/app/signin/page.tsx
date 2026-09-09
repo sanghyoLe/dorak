@@ -37,14 +37,18 @@ export default async function SignInPage({ searchParams }: SignInPageProps) {
               : "식당을 저장하고 리뷰를 남길 수 있습니다. "}
             현재는 Google 로그인을 사용합니다. 리뷰에는 선택한 닉네임만
             공개합니다. 로그인 전에
-            <Link href="/privacy"> 개인정보 처리 안내</Link>를 확인해 주세요.
+            <Link className="auth-privacy-link" href="/privacy">
+              {" "}
+              개인정보 처리 안내
+            </Link>
+            를 확인해 주세요.
           </p>
 
           {googleSignInEnabled ? (
             <GoogleSignInButton callbackURL={destination} />
           ) : (
             <div className="auth-unavailable">
-              <strong>로컬 체험 모드</strong>
+              <strong>로그인 준비 중</strong>
               <p>현재 로그인할 수 없습니다. 잠시 후 다시 시도해 주세요.</p>
               <Link href={destination}>이전 화면으로 돌아가기</Link>
             </div>

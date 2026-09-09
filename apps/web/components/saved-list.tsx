@@ -29,9 +29,9 @@ export function SavedList({
     if (authenticated) return;
 
     const controller = new AbortController();
-    const stored = window.localStorage.getItem(SAVED_STORAGE_KEY);
     let publicIds: string[] = [];
     try {
+      const stored = window.localStorage.getItem(SAVED_STORAGE_KEY);
       const parsed = stored ? (JSON.parse(stored) as unknown) : [];
       if (Array.isArray(parsed)) {
         publicIds = parsed.filter(
@@ -39,7 +39,9 @@ export function SavedList({
         );
       }
     } catch {
-      window.localStorage.removeItem(SAVED_STORAGE_KEY);
+      setError(
+        "이 기기의 저장 목록을 읽지 못했습니다. 브라우저의 저장 공간 설정을 확인해 주세요.",
+      );
     }
 
     void Promise.all(
@@ -82,8 +84,16 @@ export function SavedList({
       const next = branches
         .filter((item) => item.publicId !== branch.publicId)
         .map((item) => item.publicId);
-      window.localStorage.setItem(SAVED_STORAGE_KEY, JSON.stringify(next));
-      setPendingId(null);
+      try {
+        window.localStorage.setItem(SAVED_STORAGE_KEY, JSON.stringify(next));
+      } catch {
+        setBranches(branches);
+        setError(
+          "저장을 해제하지 못했습니다. 브라우저의 저장 공간 설정을 확인해 주세요.",
+        );
+      } finally {
+        setPendingId(null);
+      }
       return;
     }
 

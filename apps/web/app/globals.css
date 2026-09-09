@@ -1,6 +1,11 @@
-/* Hallmark · macrostructure: Index-First · tone: restaurant directory · anchor hue: clay-orange · theme: studied-DNA (source: https://tabelog.com/kr/) · studied: yes · nav: N1a · footer: Ft2 · enrichment: none */
-/* Hallmark · pre-emit critique: P5 H5 E5 S5 R5 V5 · contrast: pass (40–41) · slop: pass (42–48) · mobile: pass (34, 49, 50–57) */
+/* Hallmark · macrostructure: Search-first directory · genre: modern-minimal · design-system: design.md · designed-as-app · anchor hue: clay-orange */
+/* Hallmark · pre-emit critique: P5 H4 E4 S5 R5 V4 · verified: 320/375/414/768 overflow, labels, contrast */
 @import "../../../tokens.css";
+
+.auth-privacy-link {
+  display: inline-block;
+  white-space: nowrap;
+}
 
 *,
 *::before,
@@ -2908,4 +2913,261 @@ button:disabled {
 .review-usage-note {
   color: var(--color-ink-soft);
   font-size: var(--text-sm);
+}
+
+/* Hallmark · macrostructure: Search-first directory · design-system: design.md
+ * genre: modern-minimal · designed-as-app · P5 H4 E4 S5 R5 V4
+ */
+.site-header {
+  border-block-start: 0;
+  border-block-end-color: var(--color-rule);
+}
+.site-header__inner {
+  min-height: 4.5rem;
+}
+.brand strong {
+  font-family: var(--font-body);
+  letter-spacing: -0.06em;
+}
+.brand > span {
+  display: none;
+}
+.header-explore {
+  margin-inline-end: auto;
+  min-height: 2.75rem;
+  display: inline-flex;
+  align-items: center;
+  color: var(--color-ink-soft);
+  font-size: var(--text-sm);
+  text-decoration: none;
+  white-space: nowrap;
+}
+.header-explore:hover {
+  color: var(--color-clay-deep);
+}
+.site-header nav a {
+  text-decoration: none;
+  font-weight: 600;
+}
+.header-search__field,
+.header-search > button,
+.location-field,
+.keyword-field,
+.search-button,
+.save-button,
+.nearby-locate-button {
+  border-radius: var(--radius-sm);
+}
+.home-portal {
+  border: 0;
+  padding-block: var(--space-xl);
+}
+.home-index__masthead {
+  border: 0;
+  padding-block-end: var(--space-md);
+}
+.home-index__heading h1 {
+  font-size: var(--text-2xl);
+  letter-spacing: -0.04em;
+  text-align: start;
+}
+.home-index__heading p {
+  margin-block-start: var(--space-xs);
+  font-size: var(--text-base);
+}
+.search-panel {
+  border: 0;
+  border-radius: var(--radius-panel);
+  background: var(--color-sunken);
+}
+.home-search {
+  margin: 0;
+}
+.home-nearby-link {
+  margin-block: var(--space-2xs) var(--space-md);
+  font-weight: 600;
+}
+.portal-rails {
+  border: 0;
+  gap: var(--space-xl);
+}
+.portal-rail {
+  padding-block: var(--space-sm);
+}
+.portal-rail + .portal-rail {
+  border: 0;
+  padding-inline-start: 0;
+}
+.portal-rail__heading h2 {
+  font-size: var(--text-base);
+  font-weight: 700;
+}
+.portal-link-grid {
+  border: 0;
+  gap: var(--space-2xs);
+}
+.portal-link {
+  border: var(--rule-hair) solid var(--color-rule);
+  border-radius: var(--radius-sm);
+  padding: var(--space-xs);
+  font-size: var(--text-sm);
+  font-weight: 600;
+  background: var(--color-surface);
+}
+.portal-link-grid--cuisine .portal-link::after {
+  content: none;
+}
+.portal-link-grid--cuisine {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+.portal-link-grid--cuisine .portal-link {
+  justify-content: center;
+  padding-inline: var(--space-2xs);
+}
+.home-index__preview {
+  border: 0;
+  margin-block-start: var(--space-lg);
+}
+.home-index__preview-heading {
+  flex-direction: row;
+  align-items: center;
+  gap: var(--space-xs);
+  padding-block: var(--space-sm);
+}
+.home-index__preview-heading h2 {
+  font-size: var(--text-base);
+}
+.home-index__preview-heading a {
+  font-weight: 500;
+}
+.home-index__preview-list {
+  border-block-start-color: var(--color-rule);
+  column-gap: var(--space-lg);
+}
+.home-index__preview-list li > a {
+  padding-block: var(--space-sm);
+}
+.home-index__preview-name strong {
+  font-weight: 600;
+}
+.home-index__preview-meta {
+  font-size: var(--text-xs);
+}
+.directory-heading,
+.branch-heading,
+.nearby-finder {
+  border-block-start: 0;
+}
+.restaurant-list {
+  border-block-start-color: var(--color-rule);
+}
+.restaurant-row {
+  border-inline: 0;
+  border-block-end-color: var(--color-rule);
+  background: var(--color-transparent);
+}
+.restaurant-main h3 {
+  font-size: var(--text-md);
+}
+.restaurant-facts {
+  background: var(--color-transparent);
+}
+.branch-heading {
+  padding-block: var(--space-md);
+}
+.branch-heading__actions {
+  gap: var(--space-2xs);
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.branch-write-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 2.75rem;
+  padding-inline: var(--space-sm);
+  border-radius: var(--radius-sm);
+  background: var(--color-clay);
+  color: var(--color-accent-ink);
+  text-decoration: none;
+  font-size: var(--text-sm);
+  font-weight: 700;
+  white-space: nowrap;
+}
+.branch-write-link:hover {
+  background: var(--color-clay-deep);
+}
+.branch-overview {
+  border: 0;
+  border-radius: var(--radius-panel);
+  background: var(--color-sunken);
+}
+.branch-overview__copy > p:first-child {
+  font-size: var(--text-sm);
+  font-weight: 400;
+  color: var(--color-ink-soft);
+}
+.branch-section-nav {
+  border-block: var(--rule-hair) solid var(--color-rule);
+}
+.branch-section-nav a {
+  border-inline-end: 0;
+  font-weight: 600;
+}
+.branch-section header,
+.branch-data-note,
+.branch-location {
+  border-block-start: var(--rule-hair) solid var(--color-rule);
+}
+.branch-section h2 {
+  font-size: var(--text-md);
+}
+.nearby-list {
+  border-block-start: var(--rule-hair) solid var(--color-rule);
+}
+.nearby-list li {
+  border-block-end-color: var(--color-rule);
+}
+.site-footer {
+  border-block-start-color: var(--color-rule);
+  background: var(--color-sunken);
+}
+@media (min-width: 48rem) {
+  .home-search {
+    grid-template-columns: minmax(10rem, 0.6fr) minmax(0, 1.4fr) auto;
+  }
+  .home-search .location-field {
+    grid-column: auto;
+  }
+}
+@media (max-width: 39.99rem) {
+  .home-portal {
+    padding-block-start: var(--space-lg);
+  }
+  .home-index__heading h1 {
+    font-size: var(--text-xl);
+  }
+  .home-index__heading p {
+    font-size: var(--text-sm);
+  }
+  .portal-rails {
+    gap: var(--space-sm);
+  }
+  .portal-rail__heading {
+    margin-block-end: var(--space-xs);
+  }
+  .home-index__preview-list li > a {
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--space-2xs);
+  }
+  .home-index__preview-meta {
+    justify-content: flex-start;
+  }
+  .home-index__preview-meta svg {
+    display: none;
+  }
+  .restaurant-main h3 {
+    font-size: var(--text-base);
+  }
 }

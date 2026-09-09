@@ -1,12 +1,12 @@
 /* Hallmark · macrostructure: Ecosystem Index · tone: restaurant directory · anchor hue: clay-orange · theme: studied-DNA (source: https://tabelog.com/kr/) · studied: yes */
 :root {
-  --color-paper: oklch(0.965 0.014 82);
-  --color-surface: oklch(0.992 0.008 85);
-  --color-sunken: oklch(0.925 0.022 78);
+  --color-paper: oklch(0.99 0.005 82);
+  --color-surface: oklch(0.998 0.005 85);
+  --color-sunken: oklch(0.96 0.006 78);
   --color-ink: oklch(0.23 0.016 71);
   --color-ink-soft: oklch(0.45 0.021 74);
-  --color-rule: oklch(0.83 0.031 78);
-  --color-rule-strong: oklch(0.68 0.035 76);
+  --color-rule: oklch(0.9 0.008 78);
+  --color-rule-strong: oklch(0.72 0.012 76);
   --color-clay: oklch(0.55 0.172 39);
   --color-clay-deep: oklch(0.43 0.145 37);
   --color-clay-soft: oklch(0.92 0.045 46);
@@ -51,7 +51,8 @@
 
   --rule-hair: 1px;
   --rule-heavy: 3px;
-  --radius-sm: 0.25rem;
+  --radius-sm: 0.5rem;
+  --radius-panel: 1rem;
   --radius-pill: 999px;
 
   --ease-out: cubic-bezier(0.16, 1, 0.3, 1);

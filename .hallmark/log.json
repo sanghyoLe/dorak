@@ -1,5 +1,13 @@
 [
   {
+    "date": "2026-09-08",
+    "scope": "app",
+    "macrostructure": "Search-first directory",
+    "theme": "dorak-light",
+    "enrichment": "none",
+    "brief": "사용자 승인 디자인 재구축: 밝은 바탕, 검색 중심 홈, 간결한 목록과 리뷰 진입"
+  },
+  {
     "date": "2026-09-04",
     "macrostructure": "Ecosystem Index",
     "theme": "studied-DNA",

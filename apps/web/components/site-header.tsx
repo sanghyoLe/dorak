@@ -4,7 +4,7 @@ import { getViewer } from "../server/viewer";
 import { SignOutButton } from "./auth-controls";
 import { HeaderSearch } from "./header-search";
 
-export async function SiteHeader() {
+export async function SiteHeader({ home = false }: { home?: boolean }) {
   const viewer = await getViewer();
 
   return (
@@ -14,7 +14,13 @@ export async function SiteHeader() {
           <strong>도락</strong>
           <span>좋은 식당을 찾는 즐거움</span>
         </Link>
-        <HeaderSearch />
+        {home ? (
+          <Link className="header-explore" href="/r">
+            식당 둘러보기
+          </Link>
+        ) : (
+          <HeaderSearch />
+        )}
         <nav aria-label="사용자 메뉴">
           <Link
             className="saved-nav-link"
